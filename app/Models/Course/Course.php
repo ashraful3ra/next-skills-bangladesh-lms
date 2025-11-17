@@ -15,9 +15,14 @@ class Course extends Model implements HasMedia
 {
     use HasFactory, InteractsWithMedia;
 
+    /**
+     * Mass assignable attributes.
+     */
     protected $fillable = [
         'title',
         'slug',
+
+        // পুরনো ফিল্ডগুলো
         'course_type',
         'status',
         'level',
@@ -48,6 +53,29 @@ class Course extends Model implements HasMedia
         'instructor_id',
         'course_category_id',
         'course_category_child_id',
+
+        // 🔹 নতুন ফিল্ডগুলো
+        // main / batch
+        'course_mode',
+        // batch হলে যে main course এর আন্ডারে থাকবে
+        'main_course_id',
+        // batch course নম্বর
+        'batch_no',
+        // public / private
+        'visibility',
+        // course শেষ হয়েছে কিনা
+        'is_completed',
+    ];
+
+    /**
+     * Attribute casting.
+     */
+    protected $casts = [
+        'price'          => 'decimal:2',
+        'discount_price' => 'decimal:2',
+        'discount'       => 'boolean',
+        'drip_content'   => 'boolean',
+        'is_completed'   => 'boolean',
     ];
 
     public function course_category(): BelongsTo
@@ -118,5 +146,20 @@ class Course extends Model implements HasMedia
     public function coupons(): HasMany
     {
         return $this->hasMany(CourseCoupon::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * 🔹 Batch/Main রিলেশন
+     * mainCourse()  => কোনো batch course এর parent main course
+     * batches()     => কোনো main course এর সব batch course
+     */
+    public function mainCourse(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'main_course_id');
+    }
+
+    public function batches(): HasMany
+    {
+        return $this->hasMany(self::class, 'main_course_id');
     }
 }

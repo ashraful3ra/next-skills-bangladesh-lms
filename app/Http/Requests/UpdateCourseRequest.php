@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Enums\ExpiryLimitType;
 use App\Enums\CoursePricingType;
+use App\Enums\CourseModeType;
+use App\Enums\CourseVisibilityType;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateCourseRequest extends FormRequest
@@ -14,6 +16,8 @@ class UpdateCourseRequest extends FormRequest
         $this->merge([
             'price' => request('price') ? (float) request('price') : null,
             'discount' => filter_var(request('discount'), FILTER_VALIDATE_BOOLEAN),
+            // NEW
+            'is_completed' => filter_var(request('is_completed'), FILTER_VALIDATE_BOOLEAN),
             'discount_price' => request('discount_price') ? (float) request('discount_price') : null,
             'course_category_id' => (int) request('course_category_id', 0),
             'course_category_child_id' => request('course_category_child_id') ? (int) request('course_category_child_id') : null,
@@ -74,6 +78,14 @@ class UpdateCourseRequest extends FormRequest
             'drip_content' => 'required|boolean',
             'course_category_id' => 'required|exists:course_categories,id',
             'course_category_child_id' => 'nullable|exists:course_category_children,id',
+
+            // NEW
+            'course_mode' => 'required|string|in:' .
+                implode(',', [CourseModeType::MAIN->value, CourseModeType::BATCH->value]),
+            'main_course_id' => 'nullable|required_if:course_mode,' . CourseModeType::BATCH->value . '|exists:courses,id',
+            'visibility' => 'required|string|in:' .
+                implode(',', [CourseVisibilityType::PUBLIC->value, CourseVisibilityType::PRIVATE->value]),
+            'is_completed' => 'boolean',
         ];
     }
 

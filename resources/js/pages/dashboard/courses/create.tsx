@@ -16,7 +16,7 @@ import DashboardLayout from '@/layouts/dashboard/layout';
 import { onHandleChange } from '@/lib/inertia';
 import { SharedData } from '@/types/global';
 import { useForm, usePage } from '@inertiajs/react';
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 
 interface Props extends SharedData {
    labels: string[];
@@ -39,6 +39,16 @@ const Index = (props: Props) => {
       short_description: '',
       description: '',
       status: 'draft',
+
+      // NEW: course type + batch info
+      course_mode: 'main',
+      main_course_id: '',
+      batch_no: '',
+
+      // NEW: visibility + completed flag
+      visibility: 'public',
+      is_completed: false as boolean,
+
       level: '',
       language: '',
       pricing_type: 'paid',
@@ -49,7 +59,8 @@ const Index = (props: Props) => {
       expiry_duration: new Date(),
       drip_content: false as boolean,
       thumbnail: null,
-      instructor_id: user.role === 'admin' && system.sub_type === 'collaborative' ? '' : user.instructor_id,
+      instructor_id:
+         user.role === 'admin' && system.sub_type === 'collaborative' ? '' : user.instructor_id,
       course_category_id: '',
       course_category_child_id: '',
    });
@@ -57,7 +68,6 @@ const Index = (props: Props) => {
    // Handle form submission
    const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-
       post(route('courses.store'));
    };
 
@@ -89,6 +99,29 @@ const Index = (props: Props) => {
       value: instructor.id as string,
    }));
 
+   // NEW: main course list for batch selection
+   const [mainCourses, setMainCourses] = useState<{ label: string; value: string }[]>([]);
+
+   useEffect(() => {
+      if (data.course_mode !== 'batch') return;
+      if (mainCourses.length > 0) return;
+
+      fetch(route('courses.main-courses'))
+         .then((res) => res.json())
+         .then((response) => {
+            const items =
+               response?.data?.map((c: any) => ({
+                  label: c.title as string,
+                  value: String(c.id),
+               })) || [];
+
+            setMainCourses(items);
+         })
+         .catch((error) => {
+            console.error('Failed to load main courses', error);
+         });
+   }, [data.course_mode, mainCourses.length]);
+
    return (
       <Card className="container p-6">
          <form onSubmit={handleSubmit} className="space-y-6">
@@ -97,7 +130,12 @@ const Index = (props: Props) => {
                <div className="space-y-4">
                   <div>
                      <Label>{input.title} *</Label>
-                     <Input name="title" value={data.title} onChange={(e) => onHandleChange(e, setData)} placeholder={input.title_placeholder} />
+                     <Input
+                        name="title"
+                        value={data.title}
+                        onChange={(e) => onHandleChange(e, setData)}
+                        placeholder={input.title_placeholder}
+                     />
                      <InputError message={errors.title} />
                   </div>
 
@@ -151,6 +189,145 @@ const Index = (props: Props) => {
                      </div>
                   )}
 
+                  {/* NEW: Course mode + batch main course + batch no */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                     <div>
+                        <Label>{input.course_mode_label ?? 'Course type'} *</Label>
+                        <RadioGroup
+                           value={data.course_mode as string}
+                           className="flex items-center space-x-4 pt-2 pb-1"
+                           onValueChange={(value) => {
+                              setData('course_mode', value);
+                              if (value === 'main') {
+                                 setData('main_course_id', '');
+                                 setData('batch_no', '');
+                              }
+                           }}
+                        >
+                           <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                 className="cursor-pointer"
+                                 id="course_mode_main"
+                                 value="main"
+                              />
+                              <Label htmlFor="course_mode_main">
+                                 {input.main_course_label ?? 'Main course'}
+                              </Label>
+                           </div>
+                           <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                 className="cursor-pointer"
+                                 id="course_mode_batch"
+                                 value="batch"
+                              />
+                              <Label htmlFor="course_mode_batch">
+                                 {input.batch_course_label ?? 'Batch course'}
+                              </Label>
+                           </div>
+                        </RadioGroup>
+                        <InputError message={errors.course_mode} />
+                     </div>
+
+                     {data.course_mode === 'batch' && (
+                        <div className="space-y-4">
+                           <div>
+                              <Label>
+                                 {input.main_course_select_label ?? 'Select main course'} *
+                              </Label>
+                              <Combobox
+                                 data={mainCourses}
+                                 placeholder={
+                                    input.main_course_placeholder ?? 'Choose main course'
+                                 }
+                                 defaultValue=""
+                                 onSelect={(selected) =>
+                                    setData('main_course_id', selected.value)
+                                 }
+                              />
+                              <InputError message={errors.main_course_id} />
+                           </div>
+
+                           <div>
+                              <Label>{input.batch_no_label ?? 'Batch number'} *</Label>
+                              <Input
+                                 name="batch_no"
+                                 value={data.batch_no}
+                                 onChange={(e) => setData('batch_no', e.target.value)}
+                                 placeholder={
+                                    input.batch_no_placeholder ?? 'e.g. Batch 1, 2025 Jan'
+                                 }
+                              />
+                              <InputError message={errors.batch_no} />
+                           </div>
+                        </div>
+                     )}
+                  </div>
+
+                  {/* NEW: Visibility + Completed */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                     <div>
+                        <Label>{input.visibility_label ?? 'Visibility'} *</Label>
+                        <RadioGroup
+                           value={data.visibility as string}
+                           className="flex items-center space-x-4 pt-2 pb-1"
+                           onValueChange={(value) => setData('visibility', value)}
+                        >
+                           <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                 className="cursor-pointer"
+                                 id="visibility_public"
+                                 value="public"
+                              />
+                              <Label htmlFor="visibility_public">
+                                 {input.public_label ?? 'Public'}
+                              </Label>
+                           </div>
+                           <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                 className="cursor-pointer"
+                                 id="visibility_private"
+                                 value="private"
+                              />
+                              <Label htmlFor="visibility_private">
+                                 {input.private_label ?? 'Private'}
+                              </Label>
+                           </div>
+                        </RadioGroup>
+                        <InputError message={errors.visibility} />
+                     </div>
+
+                     <div>
+                        <Label>{input.course_completed_label ?? 'Course completed?'}</Label>
+                        <RadioGroup
+                           defaultValue={data.is_completed ? 'yes' : 'no'}
+                           className="flex items-center space-x-4 pt-2 pb-1"
+                           onValueChange={(value) => setData('is_completed', value === 'yes')}
+                        >
+                           <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                 className="cursor-pointer"
+                                 id="course_completed_no"
+                                 value="no"
+                              />
+                              <Label htmlFor="course_completed_no">
+                                 {common?.no ?? 'No'}
+                              </Label>
+                           </div>
+                           <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                 className="cursor-pointer"
+                                 id="course_completed_yes"
+                                 value="yes"
+                              />
+                              <Label htmlFor="course_completed_yes">
+                                 {common?.yes ?? 'Yes'}
+                              </Label>
+                           </div>
+                        </RadioGroup>
+                        <InputError message={errors.is_completed} />
+                     </div>
+                  </div>
+
                   <div className="grid gap-6 md:grid-cols-2">
                      <div>
                         <Label htmlFor="course_category_id">{input.category} *</Label>
@@ -167,7 +344,10 @@ const Index = (props: Props) => {
 
                      <div>
                         <Label htmlFor="level">{input.course_level} *</Label>
-                        <Select value={data.level} onValueChange={(value) => setData('level', value)}>
+                        <Select
+                           value={data.level as string}
+                           onValueChange={(value) => setData('level', value)}
+                        >
                            <SelectTrigger>
                               <SelectValue placeholder={input.course_level_placeholder} />
                            </SelectTrigger>
@@ -202,7 +382,11 @@ const Index = (props: Props) => {
                      >
                         {prices.map((price) => (
                            <div key={price} className="flex items-center space-x-2">
-                              <RadioGroupItem className="cursor-pointer" id={price} value={price} />
+                              <RadioGroupItem
+                                 className="cursor-pointer"
+                                 id={price}
+                                 value={price}
+                              />
                               <Label htmlFor={price} className="capitalize">
                                  {price}
                               </Label>
@@ -260,13 +444,17 @@ const Index = (props: Props) => {
                   <div>
                      <Label>{input.expiry_period_type}</Label>
                      <RadioGroup
-                        defaultValue={data.expiry_type}
+                        defaultValue={data.expiry_type as string}
                         className="flex items-center space-x-4 pt-2 pb-1"
                         onValueChange={(value) => setData('expiry_type', value)}
                      >
                         {expiries.map((expiry) => (
                            <div key={expiry} className="flex items-center space-x-2">
-                              <RadioGroupItem className="cursor-pointer" id={expiry} value={expiry} />
+                              <RadioGroupItem
+                                 className="cursor-pointer"
+                                 id={expiry}
+                                 value={expiry}
+                              />
                               <Label htmlFor={expiry} className="capitalize">
                                  {expiry}
                               </Label>
@@ -275,12 +463,17 @@ const Index = (props: Props) => {
                      </RadioGroup>
                      <InputError message={errors.expiry_type} />
 
-                     <Accordion collapsible type="single" value={data.expiry_type}>
+                     <Accordion collapsible type="single" value={data.expiry_type as string}>
                         <AccordionItem value={expiries[1]} className="border-none">
                            <AccordionContent className="space-y-4 p-0.5">
                               <div className="pt-3">
                                  <Label htmlFor="expiry_duration">{input.expiry_date}</Label>
-                                 <DateTimePicker date={data.expiry_duration} setDate={(date) => setData('expiry_duration', date)} />
+                                 <DateTimePicker
+                                    date={data.expiry_duration as Date}
+                                    setDate={(date) =>
+                                       setData('expiry_duration', date as Date)
+                                    }
+                                 />
                                  <InputError message={errors.expiry_duration} />
                               </div>
                            </AccordionContent>
@@ -290,7 +483,11 @@ const Index = (props: Props) => {
 
                   <div>
                      <Label htmlFor="thumbnail">{input.thumbnail}</Label>
-                     <Input type="file" name="thumbnail" onChange={(e) => onHandleChange(e, setData)} />
+                     <Input
+                        type="file"
+                        name="thumbnail"
+                        onChange={(e) => onHandleChange(e, setData)}
+                     />
                      <InputError message={errors.thumbnail} />
                   </div>
 

@@ -12,7 +12,7 @@ import courseLanguages from '@/data/course-languages';
 import DashboardLayout from '@/layouts/dashboard/layout';
 import { onHandleChange } from '@/lib/inertia';
 import { useForm, usePage } from '@inertiajs/react';
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { CourseUpdateProps } from '../update';
 
 const Basic = () => {
@@ -26,6 +26,14 @@ const Basic = () => {
       short_description: course.short_description,
       description: course.description,
       status: course.status,
+
+      course_mode: (course.course_mode as string) || 'main',
+      main_course_id: course.main_course_id ?? null,
+      batch_no: course.batch_no ?? '',          // 👈 NEW
+
+      visibility: (course.visibility as string) || 'public',
+      is_completed: Boolean(course.is_completed),
+
       level: course.level,
       language: course.language,
       instructor_id: course.instructor_id,
@@ -33,6 +41,9 @@ const Basic = () => {
       course_category_id: course.course_category_id,
       course_category_child_id: course.course_category_child_id,
    });
+
+   // NEW: main course list for batch selection
+   const [mainCourses, setMainCourses] = useState<{ label: string; value: string }[]>([]);
 
    // Handle form submission
    const handleSubmit = (e: React.FormEvent) => {
@@ -43,7 +54,6 @@ const Basic = () => {
 
    const transformedCategories = useMemo(() => {
       return categories.flatMap((category) => {
-         // Parent categories
          const categoryItem = {
             id: category.id,
             label: category.title,
@@ -51,16 +61,15 @@ const Basic = () => {
             child_id: '',
          };
 
-         // Child categories
-         const childItems =
+         const childrenItems =
             category.category_children?.map((child) => ({
-               id: child.course_category_id,
-               label: `--${child.title}`,
-               value: child.title,
+               id: child.id,
+               label: `${category.title} > ${child.title}`,
+               value: `${category.title} > ${child.title}`,
                child_id: child.id,
             })) || [];
 
-         return [categoryItem, ...childItems]; // Combine parent + children
+         return [categoryItem, ...childrenItems];
       });
    }, [categories]);
 
@@ -86,12 +95,43 @@ const Basic = () => {
       }
    });
 
+   // NEW: load main courses only when needed (batch mode)
+   useEffect(() => {
+      if (data.course_mode !== 'batch') return;
+      if (mainCourses.length > 0) return;
+
+      fetch(route('courses.main-courses'))
+         .then((res) => res.json())
+         .then((response) => {
+            const items =
+               response?.data?.map((c: any) => ({
+                  label: c.title as string,
+                  value: String(c.id),
+               })) || [];
+
+            setMainCourses(items);
+         })
+         .catch((error) => {
+            console.error('Failed to load main courses', error);
+         });
+   }, [data.course_mode, mainCourses.length]);
+
+   const selectedMainCourse = useMemo(
+      () => mainCourses.find((item) => Number(item.value) === Number(data.main_course_id)),
+      [mainCourses, data.main_course_id]
+   );
+
    return (
       <Card className="container p-4 sm:p-6">
          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                <Label>{input.title} *</Label>
-               <Input name="title" value={data.title} onChange={(e) => onHandleChange(e, setData)} placeholder={input.title_placeholder} />
+               <Input
+                  name="title"
+                  value={data.title}
+                  onChange={(e) => onHandleChange(e, setData)}
+                  placeholder={input.title_placeholder}
+               />
                <InputError message={errors.title} />
             </div>
 
@@ -110,8 +150,7 @@ const Basic = () => {
             <div>
                <Label>{input.description}</Label>
                <TiptapEditor
-                  ssr={true}
-                  output="html"
+                  editorClassName="min-h-[256px] max-h-[640px]"
                   placeholder={{
                      paragraph: input.description_placeholder,
                      imageCaption: input.description_placeholder,
@@ -129,29 +168,156 @@ const Basic = () => {
                <InputError message={errors.description} />
             </div>
 
-            {auth.user.role === 'admin' && system.sub_type === 'collaborative' && (
+            {/* Instructor field (only for admin) */}
+            {auth?.user?.role === 'admin' && (
                <div>
-                  <Label>{input.course_instructor} *</Label>
-                  <Combobox
-                     defaultValue={data.instructor_id as string}
-                     data={transformedInstructors || []}
-                     placeholder={input.instructor_placeholder}
-                     onSelect={(selected) => setData('instructor_id', selected.value)}
-                  />
+                  <Label>{input.instructor ?? 'Instructor'} *</Label>
+                  <Select
+                     value={String(data.instructor_id)}
+                     onValueChange={(value) => setData('instructor_id', Number(value))}
+                  >
+                     <SelectTrigger>
+                        <SelectValue placeholder={input.instructor_placeholder} />
+                     </SelectTrigger>
+                     <SelectContent>
+                        {transformedInstructors?.map((instructor) => (
+                           <SelectItem key={instructor.value} value={String(instructor.value)}>
+                              {instructor.label}
+                           </SelectItem>
+                        ))}
+                     </SelectContent>
+                  </Select>
                   <InputError message={errors.instructor_id} />
                </div>
             )}
+
+            {/* NEW: Course Mode (Main / Batch) + Main course select */}
+            <div className="grid gap-6 md:grid-cols-2">
+               <div>
+                  <Label>{input.course_mode_label ?? 'Course type'} *</Label>
+                  <RadioGroup
+                     value={data.course_mode}
+                     className="flex items-center space-x-4 pt-2 pb-1"
+                     onValueChange={(value) => setData('course_mode', value)}
+                  >
+                     <div className="flex items-center space-x-2">
+                        <RadioGroupItem className="cursor-pointer" id="course_mode_main" value="main" />
+                        <Label htmlFor="course_mode_main">
+                           {input.main_course_label ?? 'Main course'}
+                        </Label>
+                     </div>
+                     <div className="flex items-center space-x-2">
+                        <RadioGroupItem className="cursor-pointer" id="course_mode_batch" value="batch" />
+                        <Label htmlFor="course_mode_batch">
+                           {input.batch_course_label ?? 'Batch course'}
+                        </Label>
+                     </div>
+                  </RadioGroup>
+                  <InputError message={errors.course_mode} />
+               </div>
+
+               {data.course_mode === 'batch' && (
+                  <div className="space-y-4">
+                     <div>
+                        <Label>{input.main_course_select_label ?? 'Select main course'} *</Label>
+                        <Combobox
+                           data={mainCourses}
+                           placeholder={input.main_course_placeholder ?? 'Choose main course'}
+                           defaultValue={selectedMainCourse?.label || ''}
+                           onSelect={(selected) => setData('main_course_id', Number(selected.value))}
+                        />
+                        <InputError message={errors.main_course_id} />
+                     </div>
+
+                     <div>
+                        <Label>{input.batch_no_label ?? 'Batch number'} *</Label>
+                        <Input
+                           name="batch_no"
+                           value={data.batch_no}
+                           onChange={(e) => setData('batch_no', e.target.value)}
+                           placeholder={input.batch_no_placeholder ?? 'e.g. Batch 1, 2025 Jan'}
+                        />
+                        <InputError message={errors.batch_no} />
+                     </div>
+                  </div>
+               )}
+            </div>
+
+            {/* NEW: Public / Private + Completed status */}
+            <div className="grid gap-6 md:grid-cols-2">
+               <div>
+                  <Label>{input.visibility_label ?? 'Visibility'} *</Label>
+                  <RadioGroup
+                     value={data.visibility}
+                     className="flex items-center space-x-4 pt-2 pb-1"
+                     onValueChange={(value) => setData('visibility', value)}
+                  >
+                     <div className="flex items-center space-x-2">
+                        <RadioGroupItem
+                           className="cursor-pointer"
+                           id="visibility_public"
+                           value="public"
+                        />
+                        <Label htmlFor="visibility_public">
+                           {input.public_label ?? 'Public'}
+                        </Label>
+                     </div>
+                     <div className="flex items-center space-x-2">
+                        <RadioGroupItem
+                           className="cursor-pointer"
+                           id="visibility_private"
+                           value="private"
+                        />
+                        <Label htmlFor="visibility_private">
+                           {input.private_label ?? 'Private'}
+                        </Label>
+                     </div>
+                  </RadioGroup>
+                  <InputError message={errors.visibility} />
+               </div>
+
+               <div>
+                  <Label>{input.course_completed_label ?? 'Course completed?'}</Label>
+                  <RadioGroup
+                     defaultValue={data.is_completed ? 'yes' : 'no'}
+                     className="flex items-center space-x-4 pt-2 pb-1"
+                     onValueChange={(value) => setData('is_completed', value === 'yes')}
+                  >
+                     <div className="flex items-center space-x-2">
+                        <RadioGroupItem className="cursor-pointer" id="course_completed_no" value="no" />
+                        <Label htmlFor="course_completed_no">No</Label>
+                     </div>
+                     <div className="flex items-center space-x-2">
+                        <RadioGroupItem className="cursor-pointer" id="course_completed_yes" value="yes" />
+                        <Label htmlFor="course_completed_yes">Yes</Label>
+                     </div>
+                  </RadioGroup>
+                  <InputError message={errors.is_completed} />
+               </div>
+            </div>
 
             <div className="grid gap-6 md:grid-cols-2">
                <div>
                   <Label>{input.category} *</Label>
                   <Combobox
+                     defaultValue={
+                        selectedCategory
+                           ? selectedCategory.parent
+                              ? `${selectedCategory.parent.title} > ${selectedCategory.title}`
+                              : selectedCategory.title
+                           : ''
+                     }
                      data={transformedCategories}
                      placeholder={input.category_placeholder}
-                     defaultValue={selectedCategory?.title || ''}
                      onSelect={(selected) => {
-                        setData('course_category_id', selected.id as number);
-                        setData('course_category_child_id', selected.child_id as number);
+                        const selectedCategory = transformedCategories.find(
+                           (category) => category.value === selected.value
+                        );
+
+                        if (!selectedCategory) return;
+
+                        setData('course_category_id', selectedCategory.id);
+                        setData('course_category_child_id', selectedCategory.child_id || null);
                      }}
                   />
                   <InputError message={errors.course_category_id} />
@@ -159,16 +325,29 @@ const Basic = () => {
 
                <div>
                   <Label>{input.course_level} *</Label>
-                  <Select value={data.level} onValueChange={(value) => setData('level', value)}>
+                  <Select
+                     value={String(data.level ?? '')}
+                     onValueChange={(value) => setData('level', value)}
+                  >
                      <SelectTrigger>
                         <SelectValue placeholder={input.course_level_placeholder} />
                      </SelectTrigger>
                      <SelectContent>
-                        {labels.map((label) => (
-                           <SelectItem key={label} value={label} className="capitalize">
-                              {label}
+                        {labels.map((level: any) => {
+                        // PHP enum হলে { name, value } থাকবে, string হলে সরাসরি নেব
+                        const value = typeof level === 'string' ? level : String(level.value);
+                        const text =
+                           (input as any)[value] // যদি translate ফাইলে থাকে (beginner, intermediate...)
+                           ?? (typeof level === 'object' && level !== null
+                              ? (level.name ?? value)
+                              : value);
+
+                        return (
+                           <SelectItem key={value} value={value}>
+                              {text}
                            </SelectItem>
-                        ))}
+                        );
+                        })}
                      </SelectContent>
                   </Select>
                   <InputError message={errors.level} />
@@ -186,19 +365,19 @@ const Basic = () => {
                </div>
 
                <div>
-                  <Label>{input.enable_drip_content} *</Label>
+                  <Label>{input.drip_content}</Label>
                   <RadioGroup
                      defaultValue={data.drip_content ? 'on' : 'off'}
                      className="flex items-center space-x-4 pt-2 pb-1"
-                     onValueChange={(value) => setData('drip_content', value == 'on' ? true : false)}
+                     onValueChange={(value) => setData('drip_content', value === 'on')}
                   >
                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem className="cursor-pointer" id="off" value="off" />
-                        <Label htmlFor="off">{common.off}</Label>
+                        <RadioGroupItem className="cursor-pointer" id="drip_content_off" value="off" />
+                        <Label htmlFor="drip_content_off">{common.off}</Label>
                      </div>
                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem className="cursor-pointer" id="on" value="on" />
-                        <Label htmlFor="on">{common.on}</Label>
+                        <RadioGroupItem className="cursor-pointer" id="drip_content_on" value="on" />
+                        <Label htmlFor="drip_content_on">{common.on}</Label>
                      </div>
                   </RadioGroup>
                   <InputError message={errors.drip_content} />
@@ -206,7 +385,9 @@ const Basic = () => {
             </div>
 
             <div className="mt-8">
-               <LoadingButton loading={processing}>{button.save_changes}</LoadingButton>
+               <LoadingButton loading={processing} type="submit">
+                  {button.save_changes}
+               </LoadingButton>
             </div>
          </form>
       </Card>

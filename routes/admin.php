@@ -104,6 +104,10 @@ Route::prefix('dashboard')->group(function () {
         Route::put('settings/footer-items/{item}', 'footer_items_update')->name('settings.footer.items.update');
         Route::delete('settings/footer-items/{item}', 'footer_items_destroy')->name('settings.footer.items.destroy');
         Route::post('settings/footer-items/reorder', 'footer_items_reorder')->name('settings.footer.items.reorder');
+
+        // course
+        Route::get('courses/main-courses', [CourseController::class, 'mainCourses'])->name('courses.main-courses');
+        Route::delete('courses/{id}', [CourseController::class, 'destroy'])->name('courses.destroy');
     });
 
     // customize home page sections

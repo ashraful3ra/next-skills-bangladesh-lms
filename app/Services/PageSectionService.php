@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Instructor;
 use App\Models\Course\Course;
 use App\Models\Course\CourseCategory;
+use App\Enums\CourseVisibilityType;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Modules\Blog\Models\Blog;
@@ -59,43 +60,49 @@ class PageSectionService extends MediaService
          });
    }
 
-   public function getCategoryTopCourses(array $categoryIds,  $limit = null)
+   public function getCategoryTopCourses(array $categoryIds, $limit = null)
    {
-      // Get top categories with approved courses
+      // Get top categories with approved + public + not-completed courses
       $categories = CourseCategory::withCount(['courses' => function ($query) {
-         $query->where('status', 'approved');
-      }])
+            $query->where('status', 'approved')
+                  ->where('visibility', CourseVisibilityType::PUBLIC->value)
+                  ->where('is_completed', false);
+         }])
          ->whereIn('id', $categoryIds)
          ->whereHas('courses', function ($query) {
-            $query->where('status', 'approved');
+            $query->where('status', 'approved')
+                  ->where('visibility', CourseVisibilityType::PUBLIC->value)
+                  ->where('is_completed', false);
          })
          ->with(['courses' => function ($query) use ($limit) {
             $query->where('status', 'approved')
-               ->with([
-                  'sections' => function ($query) {
-                     $query->select('id', 'course_id')
-                        ->with(['section_lessons' => function ($query) {
-                           $query->select('id', 'course_section_id', 'duration');
-                        }]);
-                  },
-                  'course_category' => function ($query) {
-                     $query->select('id', 'title');
-                  },
-                  'instructor' => function ($query) {
-                     $query->select('id', 'user_id')
-                        ->with(['user' => function ($query) {
-                           $query->select('id', 'name', 'photo');
-                        }]);
-                  },
-                  'reviews' => function ($query) {
-                     $query->select('course_id', 'rating');
-                  }
-               ])
-               ->withCount('enrollments')
-               ->orderBy('created_at', 'desc')
-               ->when($limit, function ($query) use ($limit) {
-                  $query->limit($limit);
-               });
+                  ->where('visibility', CourseVisibilityType::PUBLIC->value)
+                  ->where('is_completed', false)
+                  ->with([
+                     'sections' => function ($query) {
+                        $query->select('id', 'course_id')
+                           ->with(['section_lessons' => function ($query) {
+                              $query->select('id', 'course_section_id', 'duration');
+                           }]);
+                     },
+                     'course_category' => function ($query) {
+                        $query->select('id', 'title');
+                     },
+                     'instructor' => function ($query) {
+                        $query->select('id', 'user_id')
+                           ->with(['user' => function ($query) {
+                              $query->select('id', 'name', 'photo');
+                           }]);
+                     },
+                     'reviews' => function ($query) {
+                        $query->select('course_id', 'rating');
+                     }
+                  ])
+                  ->withCount('enrollments')
+                  ->orderBy('created_at', 'desc')
+                  ->when($limit, function ($query) use ($limit) {
+                     $query->limit($limit);
+                  });
          }])
          ->orderBy('courses_count', 'desc')
          ->get();
@@ -126,6 +133,8 @@ class PageSectionService extends MediaService
          ])
          ->withCount('enrollments')
          ->where('status', 'approved')
+         ->where('visibility', CourseVisibilityType::PUBLIC->value)
+         ->where('is_completed', false)
          ->orderBy('created_at', 'desc')
          ->limit($limit)
          ->get();
@@ -137,6 +146,8 @@ class PageSectionService extends MediaService
          ->select('id', 'title', 'slug', 'thumbnail', 'price', 'short_description', 'course_category_id')
          ->whereIn('id', $courseIds)
          ->where('status', 'approved')
+         ->where('visibility', CourseVisibilityType::PUBLIC->value)
+         ->where('is_completed', false)
          ->with(['course_category' => function ($query) {
             $query->select('id', 'title');
          }])
@@ -160,6 +171,8 @@ class PageSectionService extends MediaService
          })
          ->withCount('enrollments')
          ->where('status', 'approved')
+         ->where('visibility', CourseVisibilityType::PUBLIC->value)
+         ->where('is_completed', false)
          ->orderBy('created_at', 'desc')
          ->paginate($per_page);
 
@@ -189,6 +202,8 @@ class PageSectionService extends MediaService
          ])
          ->withCount('enrollments')
          ->where('status', 'approved')
+         ->where('visibility', CourseVisibilityType::PUBLIC->value)
+         ->where('is_completed', false)
          ->orderBy('enrollments_count', 'desc')
          ->orderBy('created_at', 'desc')
          ->get()
@@ -222,6 +237,8 @@ class PageSectionService extends MediaService
          ])
          ->withCount('enrollments')
          ->where('status', 'approved')
+         ->where('visibility', CourseVisibilityType::PUBLIC->value)
+         ->where('is_completed', false)
          ->orderBy('created_at', 'desc')
          ->limit($limit)
          ->get()
@@ -258,7 +275,8 @@ class PageSectionService extends MediaService
          ->with([
             'user',
             'courses' => function ($query) {
-               $query->where('status', 'approved');
+               $query->where('status', 'approved')
+                     ->where('visibility', CourseVisibilityType::PUBLIC->value);
             }
          ])
          ->when(array_key_exists('instructor', $data), function ($query) use ($data) {
