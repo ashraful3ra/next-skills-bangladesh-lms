@@ -106,7 +106,8 @@ const Index = (props: Props) => {
       if (data.course_mode !== 'batch') return;
       if (mainCourses.length > 0) return;
 
-      fetch(route('courses.main-courses'))
+      // ✅ Fix: 'mode: main' প্যারামিটার যোগ করা হয়েছে
+      fetch(route('courses.main-courses', { mode: 'main' }))
          .then((res) => res.json())
          .then((response) => {
             const items =

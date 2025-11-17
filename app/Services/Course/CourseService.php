@@ -156,7 +156,8 @@ class CourseService extends MediaService
         $isFrontend = $data['frontend'] ?? false;
 
         $courses = Course::with([
-                'sections',
+                // Fix: Added 'sections.section_lessons' to load nested lessons for duration calculation
+                'sections.section_lessons',
                 'course_category',
                 'course_category_child',
                 'instructor.user',
@@ -175,11 +176,15 @@ class CourseService extends MediaService
                     $q->where('slug', $data['category']);
                 });
             })
-            ->when(array_key_exists('category_child', $data) && $data['category_child'] !== 'all', function ($query) use ($data) {
-                return $query->whereHas('course_category_child', function ($q) use ($data) {
-                    $q->where('slug', $data['category_child']);
-                });
-            })
+            // Fix: Only apply child category filter if it is not null AND not 'all'
+            ->when(
+                (array_key_exists('category_child', $data) && $data['category_child'] !== 'all' && !is_null($data['category_child'])),
+                function ($query) use ($data) {
+                    return $query->whereHas('course_category_child', function ($q) use ($data) {
+                        $q->where('slug', $data['category_child']);
+                    });
+                }
+            )
 
             // level / price / language
             ->when(array_key_exists('level', $data) && $data['level'] !== 'all', function ($query) use ($data) {
@@ -200,13 +205,16 @@ class CourseService extends MediaService
         // ---- STATUS / VISIBILITY / COMPLETED FILTERS ----
 
         if ($isFrontend) {
-            // Frontend listing: শুধুমাত্র approved + public + not completed
+            // Frontend listing: শুধুমাত্র approved + public + not completed + Main Course
             $courses
+                ->where('course_mode', CourseModeType::MAIN->value) // Filter for main course
                 ->where('status', CourseStatusType::APPROVED->value)
+                // Filter for Visibility
                 ->where(function ($q) {
                     $q->whereNull('visibility')
                       ->orWhere('visibility', CourseVisibilityType::PUBLIC->value);
                 })
+                // Filter for Completion Status
                 ->where(function ($q) {
                     $q->whereNull('is_completed')
                       ->orWhere('is_completed', false);
@@ -259,6 +267,7 @@ class CourseService extends MediaService
                                     $query->where('user_id', $user->id)
                                         ->latest()
                                         ->limit(1);
+                                    // Fix: Removed accidental 'VerifyEmailNotification' text from here
                                 });
                             },
                         ]);

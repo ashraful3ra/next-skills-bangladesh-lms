@@ -291,9 +291,21 @@ class CourseController extends Controller
     public function mainCourses(Request $request)
     {
         $courses = Course::query()
-            ->select('id', 'title')
-            ->where('course_mode', CourseModeType::MAIN->value)
+            ->select('id', 'title', 'batch_no')
             ->where('status', CourseStatusType::APPROVED->value)
+
+            // ✅ Fix: শুধুমাত্র 'mode' প্যারামিটার 'main' হলেই MAIN কোর্স ফিল্টার করবে
+            ->when($request->input('mode') === 'main', function ($query) {
+                $query->where('course_mode', CourseModeType::MAIN->value);
+            })
+
+            ->when($request->search, function ($query) use ($request) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'LIKE', '%' . $search . '%')
+                      ->orWhere('batch_no', 'LIKE', '%' . $search . '%');
+                });
+            })
             ->orderBy('title')
             ->get();
 

@@ -37,8 +37,9 @@ const Index = (props: Props) => {
       value: user.id as string,
    }));
 
+   // ✅ Fix: Updated to show batch_no in the label
    const transformedCourses = courses.map((course) => ({
-      label: course.title,
+      label: course.batch_no ? `${course.title} (Batch: ${course.batch_no})` : course.title,
       value: course.id as string,
    }));
 
@@ -59,7 +60,7 @@ const Index = (props: Props) => {
             <div>
                <Label>{input.select_course}</Label>
                <Combobox
-                  data={transformedCourses}
+                  data={transformedCourses} // <-- এই ডেটা এখন ব্যাচ নম্বর সহ সার্চ করতে দেবে
                   defaultValue={data.course_id}
                   placeholder={input.select_course_placeholder}
                   onSelect={(selected) => setData('course_id', selected.value)}
