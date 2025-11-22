@@ -11,6 +11,7 @@ use App\Models\Course\CourseSection;
 use App\Models\Course\LessonResource;
 use App\Models\Course\SectionQuiz;
 use App\Models\User;
+use App\Enums\CourseModeType;
 use App\Services\MediaService;
 use App\Services\Course\CourseEnrollmentService;
 use App\Services\Course\CoursePlayerService;
@@ -43,27 +44,32 @@ class StudentService extends MediaService
       $instructor = $this->instructorService->getInstructorByUserId($user->id);
       $props['instructor'] = $instructor;
 
-      switch ($tab) {
-         case 'courses':
-            $enrollments = $this->enrollmentService->getEnrollments(['user_id' => $user->id]);
+            switch ($tab) {
+               case 'courses':
+                  $enrollments = $this->enrollmentService->getEnrollments(['user_id' => $user->id]);
 
-            foreach ($enrollments as $enrollment) {
-               $watch_history = $this->coursePlaybackService->getWatchHistory($enrollment->course_id, $user->id);
-               $completion = $this->coursePlaybackService->calculateCompletion($enrollment->course, $watch_history);
-               $enrollment->watch_history = $watch_history;
-               $enrollment->completion = $completion;
-            }
+                  foreach ($enrollments as $enrollment) {
+                     $watch_history = $this->coursePlaybackService->getWatchHistory($enrollment->course_id, $user->id);
+                     $completion = $this->coursePlaybackService->calculateCompletion($enrollment->course, $watch_history);
+                     $enrollment->watch_history = $watch_history;
+                     $enrollment->completion = $completion;
 
-            $props['enrollments'] = $enrollments;
-            break;
+                     // ✅ Student dashboard এ batch course হলে title এর সাথে Batch-XXXX যোগ করা
+                     if (
+                        $enrollment->course &&
+                        $enrollment->course->course_mode === CourseModeType::BATCH->value &&
+                        !empty($enrollment->course->batch_no)
+                     ) {
+                        $enrollment->course->title = sprintf(
+                           '%s (Batch-%s)',
+                           $enrollment->course->title,
+                           $enrollment->course->batch_no
+                        );
+                     }
+                  }
 
-         case 'wishlist':
-            $wishlists = $this->courseWishlistService->getWishlists(['user_id' => $user->id]);
-            $props['wishlists'] = $wishlists;
-            break;
-
-         default:
-            break;
+                  $props['enrollments'] = $enrollments;
+                  break;
       }
 
       return $props;

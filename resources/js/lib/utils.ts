@@ -58,11 +58,18 @@ export const getCourseDuration = (course: Course, format: DurationFormat = 'hhmm
 };
 
 // Get completed content like lessons or quizzes
-export const getCompletedContents = (watchHistory: WatchHistory): CompletedContent[] => {
-   const completed =
-      typeof watchHistory.completed_watching === 'string' ? JSON.parse(watchHistory.completed_watching) : watchHistory.completed_watching || [];
+export const getCompletedContents = (watchHistory: WatchHistory | null): CompletedContent[] => {
+   // প্রথমবার কোনো watch history না থাকলে
+   if (!watchHistory) {
+      return [];
+   }
 
-   return completed;
+   const completed =
+      typeof watchHistory.completed_watching === 'string'
+         ? JSON.parse(watchHistory.completed_watching as string)
+         : watchHistory.completed_watching || [];
+
+   return completed || [];
 };
 
 // Add completion calculation

@@ -228,20 +228,26 @@ class CoursePlayerService
       return $watchHistory;
    }
 
-   public function calculateCompletion(Course $course, WatchHistory $watchHistory): array
+   public function calculateCompletion(Course $course, ?WatchHistory $watchHistory): array
    {
-      $completedItems = json_decode($watchHistory->completed_watching, true) ?: [];
+      // যদি এখনও কোনো watch history না থাকে, তাহলে completion 0%
+      if (!$watchHistory) {
+         $completedItems = [];
+      } else {
+         $completedItems = json_decode($watchHistory->completed_watching, true) ?: [];
+      }
 
-      // Count the total number of items (lessons + quizzes) across all sections
+      // মোট কতটা আইটেম (lessons + quizzes)
       $totalItems = 0;
       foreach ($course->sections as $section) {
          $totalItems += count($section->section_lessons) + count($section->section_quizzes);
       }
 
-      // Count how many items are completed
+      // কতগুলো complete হয়েছে
       $completedCount = 0;
+
       foreach ($course->sections as $section) {
-         // Count completed lessons
+         // Completed lessons
          foreach ($section->section_lessons as $lesson) {
             foreach ($completedItems as $completedItem) {
                if ((string)$completedItem['id'] === (string)$lesson->id && $completedItem['type'] === 'lesson') {
@@ -251,7 +257,7 @@ class CoursePlayerService
             }
          }
 
-         // Count completed quizzes
+         // Completed quizzes
          foreach ($section->section_quizzes as $quiz) {
             foreach ($completedItems as $completedItem) {
                if ((string)$completedItem['id'] === (string)$quiz->id && $completedItem['type'] === 'quiz') {
@@ -262,13 +268,13 @@ class CoursePlayerService
          }
       }
 
-      // Calculate completion
+      // Completion % বের করা
       $completion = $totalItems > 0 ? round(($completedCount / $totalItems) * 100, 2) : 0;
 
       return [
-         'total_items' => $totalItems,
-         'completed_items' => $completedCount,
-         'completion' => $completion,
+         'total_items'      => $totalItems,
+         'completed_items'  => $completedCount,
+         'completion'       => $completion,
       ];
    }
 

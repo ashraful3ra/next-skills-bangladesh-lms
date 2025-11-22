@@ -162,7 +162,7 @@ class CourseService extends MediaService
                 'course_category_child',
                 'instructor.user',
             ])
-            ->withCount('reviews')
+            ->withCount(['reviews', 'lessons', 'enrollments']) // ✅ reviews + lessons count + enrollments count
             ->withAvg('reviews as average_rating', 'rating')
 
             // search

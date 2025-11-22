@@ -83,6 +83,7 @@ class UpdateCourseRequest extends FormRequest
             'course_mode' => 'required|string|in:' .
                 implode(',', [CourseModeType::MAIN->value, CourseModeType::BATCH->value]),
             'main_course_id' => 'nullable|required_if:course_mode,' . CourseModeType::BATCH->value . '|exists:courses,id',
+            'batch_no' => 'nullable|string|max:100|required_if:course_mode,' . CourseModeType::BATCH->value,
             'visibility' => 'required|string|in:' .
                 implode(',', [CourseVisibilityType::PUBLIC->value, CourseVisibilityType::PRIVATE->value]),
             'is_completed' => 'boolean',

@@ -37,6 +37,8 @@ interface Course extends TableCommon {
    language?: string;
    pricing_type: string;
    price: number;
+   course_mode?: string;
+   batch_no?: string | number | null;
    discount?: number;
    discount_price?: number;
    drip_content: number;

@@ -62,7 +62,7 @@ export interface StudentCourseProps extends SharedData {
    certificateTemplate: CertificateTemplate | null;
    marksheetTemplate: MarksheetTemplate | null;
    studentMarks: StudentMarks | null;
-   watchHistory: WatchHistory;
+   watchHistory: WatchHistory | null;
    completion: CourseCompletion;
    zoomConfig: ZoomConfigFields;
 }
