@@ -17,8 +17,6 @@ class StoreCourseEnrollmentRequest extends FormRequest
 
     /**
      * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -37,6 +35,16 @@ class StoreCourseEnrollmentRequest extends FormRequest
                 },
             ],
             'enrollment_type' => 'required|string|in:free,paid',
+            
+            // Updated Rules: Made Optional
+            'amount'          => 'nullable|numeric|min:0', 
+            'payment_method'  => 'nullable|string|in:bKash,Nagad,Rocket,Bank',
+            'transaction_id'  => 'nullable|string|max:255', // এখন এটি আর বাধ্যতামূলক নয়
+            
+            // Coupon logic
+            'coupon_applied'  => 'boolean',
+            'coupon_code'     => 'nullable|string', // Coupon code এখন optional রাখা হলো
+            'discount_amount' => 'nullable|numeric|min:0',
         ];
     }
 }

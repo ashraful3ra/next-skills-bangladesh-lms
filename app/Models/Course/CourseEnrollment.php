@@ -16,6 +16,13 @@ class CourseEnrollment extends Model
         'enrollment_type',
         'entry_date',
         'expiry_date',
+        // New Fields Added
+        'amount',
+        'payment_method',
+        'transaction_id',
+        'coupon_applied',
+        'coupon_code',
+        'discount_amount',
     ];
 
     public function user()
@@ -27,9 +34,4 @@ class CourseEnrollment extends Model
     {
         return $this->belongsTo(Course::class);
     }
-
-    // public function isActive()
-    // {
-    //     return $this->enrollment_type === 'lifetime' || ($this->expiry_date && now()->lt($this->expiry_date));
-    // }
 }

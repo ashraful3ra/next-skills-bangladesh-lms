@@ -57,6 +57,11 @@ class CourseEnrollmentService extends MediaService
          $courseId = $data['course_id'];
          $courseSectionService = new CourseSectionService();
 
+         // Fix: Ensure non-nullable fields have default values instead of null
+         $data['amount'] = $data['amount'] ?? 0;
+         $data['discount_amount'] = $data['discount_amount'] ?? 0;
+         $data['coupon_applied'] = $data['coupon_applied'] ?? false;
+
          $enrollment = CourseEnrollment::create([...$data, 'entry_date' => now()]);
 
          $lessons = SectionLesson::query()->where('course_id', $courseId);
