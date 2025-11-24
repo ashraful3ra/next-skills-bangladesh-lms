@@ -13,16 +13,10 @@ class CourseEnrollment extends Model
     protected $fillable = [
         'user_id',
         'course_id',
-        'enrollment_type',
+        'enrollment_type', // 'paid' or 'free'
         'entry_date',
         'expiry_date',
-        // New Fields Added
-        'amount',
-        'payment_method',
-        'transaction_id',
-        'coupon_applied',
-        'coupon_code',
-        'discount_amount',
+        // Payment columns removed (moved to payment_histories table)
     ];
 
     public function user()

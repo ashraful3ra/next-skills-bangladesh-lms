@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
+use App\Models\PaymentHistory;
 use App\Services\UserService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,72 @@ class UsersController extends Controller
         ]);
 
         return Inertia::render('dashboard/users/index', compact('users'));
+    }
+
+    /**
+     * Show the student profile with enrollments and payment info
+     */
+    public function show($id)
+    {
+        $user = User::with(['enrollments.course', 'payment_histories.course'])->findOrFail($id);
+
+        // Payment Summary Processing (Course wise)
+        $user->enrollments->transform(function ($enrollment) use ($user) {
+            $course = $enrollment->course;
+            
+            if (!$course) {
+                $enrollment->payment_info = [
+                    'course_title' => 'Unknown Course',
+                    'course_price' => 0,
+                    'paid_amount' => 0,
+                    'due_amount' => 0,
+                    'status' => 'Unknown',
+                ];
+                return $enrollment;
+            }
+
+            // Calculate Total Paid for this specific course
+            $totalPaid = $user->payment_histories
+                ->where('course_id', $course->id)
+                ->sum('amount');
+
+            $coursePrice = $course->price ?? 0;
+            $dueAmount = max(0, $coursePrice - $totalPaid);
+
+            $status = 'Due';
+            if ($dueAmount == 0 && $coursePrice > 0) {
+                $status = 'Paid';
+            } elseif ($totalPaid > 0) {
+                $status = 'Partial';
+            } elseif ($coursePrice == 0) {
+                $status = 'Free';
+            }
+
+            $enrollment->payment_info = [
+                'course_title' => $course->title,
+                'course_price' => $coursePrice,
+                'paid_amount' => $totalPaid,
+                'due_amount' => $dueAmount,
+                'status' => $status,
+            ];
+            
+            return $enrollment;
+        });
+
+        return Inertia::render('dashboard/users/show', [
+            'student' => $user
+        ]);
+    }
+
+    /**
+     * ✅ New Method: Delete a SINGLE payment history record
+     */
+    public function destroyPaymentHistory($id)
+    {
+        $payment = PaymentHistory::findOrFail($id);
+        $payment->delete();
+
+        return redirect()->back()->with('success', 'Single payment record deleted successfully.');
     }
 
     /**

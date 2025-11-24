@@ -21,7 +21,10 @@ use App\Http\Controllers\UsersController;
 
 Route::prefix('dashboard')->group(function () {
     // users
-    Route::resource('users', UsersController::class)->only(['index', 'update']);
+    Route::resource('users', UsersController::class)->only(['index', 'update', 'show']);
+    
+    // ✅ Single Payment Delete Route (Updated)
+    Route::delete('payment-histories/{id}', [UsersController::class, 'destroyPaymentHistory'])->name('payment-histories.destroy');
 
     // Category
     Route::resource('categories', CourseCategoryController::class)->only(['index', 'store', 'destroy']);
@@ -42,7 +45,6 @@ Route::prefix('dashboard')->group(function () {
 
     // course enrolment
     Route::resource('enrollments', CourseEnrollmentController::class)->only(['index', 'create', 'store', 'destroy']);
-    // Bulk Enroll Routes (New)
     Route::post('enrollments/bulk', [CourseEnrollmentController::class, 'bulkEnroll'])->name('enrollments.bulk');
     Route::get('enrollments/template', [CourseEnrollmentController::class, 'downloadTemplate'])->name('enrollments.template');
 

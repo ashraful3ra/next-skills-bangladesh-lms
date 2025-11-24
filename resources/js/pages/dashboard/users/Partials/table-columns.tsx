@@ -2,8 +2,9 @@ import DeleteModal from '@/components/inertia/delete-modal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ColumnDef } from '@tanstack/react-table';
-import { ArrowUpDown, Pencil, Trash2 } from 'lucide-react';
+import { ArrowUpDown, Eye, Pencil, Trash2 } from 'lucide-react';
 import EditForm from './edit-form';
+import { Link } from '@inertiajs/react';
 
 const TableColumn = (translate: LanguageTranslations): ColumnDef<User>[] => {
    const { table, common } = translate;
@@ -59,6 +60,14 @@ const TableColumn = (translate: LanguageTranslations): ColumnDef<User>[] => {
          cell: ({ row }) => {
             return (
                <div className="flex justify-end gap-2 py-1">
+                  {/* View Profile Button */}
+                  <Link
+                     href={`/dashboard/users/${row.original.id}`}
+                     className="h-8 w-8 flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                  >
+                     <Eye className="h-4 w-4" />
+                  </Link>
+
                   <EditForm
                      user={row.original}
                      actionComponent={
@@ -69,7 +78,9 @@ const TableColumn = (translate: LanguageTranslations): ColumnDef<User>[] => {
                   />
 
                   <DeleteModal
-                     routePath={route('users.destroy', row.original.id)}
+                     // Use 'url' prop instead of routePath for consistency with your updated modal
+                     url={`/dashboard/users`}
+                     id={row.original.id}
                      message={table.delete_instructor_warning}
                      actionComponent={
                         <Button size="icon" variant="ghost" className="bg-destructive/8 hover:bg-destructive/6 h-8 w-8 p-0">

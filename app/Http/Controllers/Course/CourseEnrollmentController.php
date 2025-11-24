@@ -14,8 +14,10 @@ use Inertia\Inertia;
 use App\Models\User;
 use App\Models\Course\Course;
 use App\Models\Course\CourseEnrollment;
+use App\Models\PaymentHistory; // নতুন ইম্পোর্ট
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\EnrollmentErrorExport;
+use Illuminate\Support\Str;
 
 class CourseEnrollmentController extends Controller
 {
@@ -55,6 +57,7 @@ class CourseEnrollmentController extends Controller
 
     public function store(StoreCourseEnrollmentRequest $request)
     {
+        // Service handle korbe creation logic (Enrollment + Payment History)
         $this->enrollmentService->createCourseEnroll($request->validated());
         return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully done in this course');
     }
@@ -65,17 +68,15 @@ class CourseEnrollmentController extends Controller
             $this->enrollmentService->deleteEnrollment($id);
             return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully deleted');
         } catch (\Exception $e) {
-            // Log the error if needed: \Log::error($e->getMessage());
             return redirect(route('enrollments.index'))->with('error', 'Failed to delete enrollment.');
         }
     }
 
     /**
-     * Bulk Enrollment Logic
+     * Bulk Enrollment Logic Updated for PaymentHistory Table
      */
     public function bulkEnroll(Request $request)
     {
-        // ১. ভ্যালিডেশন
         $request->validate([
             'course_id' => 'required|exists:courses,id',
             'file' => 'required|mimes:xlsx,xls,csv',
@@ -85,14 +86,12 @@ class CourseEnrollmentController extends Controller
             $courseId = $request->course_id;
             $file = $request->file('file');
 
-            // এক্সেল ডাটা রিড করা
             $rows = Excel::toArray([], $file)[0] ?? [];
             
             if (empty($rows)) {
                 return response()->json(['message' => 'The uploaded file is empty.'], 400);
             }
 
-            // হেডার রিমুভ
             $header = array_shift($rows); 
 
             $failedRows = [];
@@ -130,7 +129,7 @@ class CourseEnrollmentController extends Controller
                     continue;
                 }
 
-                // Enrollment Type Logic
+                // Logic: If amount > 0, type is paid, otherwise free
                 if ($amount > 0 || !empty($trxid)) {
                     $enrollmentType = 'paid';
                     if (empty($method)) $method = 'manual';
@@ -140,26 +139,39 @@ class CourseEnrollmentController extends Controller
                     $method = null;
                 }
 
-                // ডাটাবেস অপারেশন
+                // 1. Create Enrollment (Without Payment Data)
                 CourseEnrollment::create([
                     'course_id' => $courseId,
                     'user_id' => $student->id,
                     'enrollment_type' => $enrollmentType,
                     'entry_date' => now(),
-                    'amount' => $amount,
-                    'payment_method' => $method,
-                    'transaction_id' => $trxid,
                 ]);
+
+                // 2. Create Payment History (If Amount > 0)
+                if ($amount > 0) {
+                    PaymentHistory::create([
+                        'user_id' => $student->id,
+                        'course_id' => $courseId,
+                        'amount' => $amount,
+                        'payment_type' => $method,
+                        'transaction_id' => $trxid,
+                        'invoice' => 'BULK-' . strtoupper(Str::random(8)),
+                        'admin_revenue' => $amount,
+                        'instructor_revenue' => 0,
+                        'tax' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
                 $successCount++;
             }
 
-            // যদি ফেইলড ডাটা থাকে, এক্সেল জেনারেট করুন
             if (count($failedRows) > 0) {
                 array_unshift($failedRows, ['name', 'phone', 'email', 'paid_amount', 'payment_method', 'trxid', 'error_reason']);
                 
                 $message = "$successCount students enrolled successfully!";
                 
-                // বাফার ক্লিয়ার (খুবই জরুরি)
                 if (ob_get_contents()) ob_end_clean();
 
                 return Excel::download(new EnrollmentErrorExport($failedRows), 'enrollment_errors.xlsx', \Maatwebsite\Excel\Excel::XLSX, [
@@ -174,7 +186,6 @@ class CourseEnrollmentController extends Controller
             ]);
 
         } catch (\Throwable $th) {
-            // যেকোনো সার্ভার এরর হলে JSON রিটার্ন করবে
             return response()->json([
                 'message' => 'Server Error: ' . $th->getMessage(),
                 'trace' => $th->getTraceAsString() 
