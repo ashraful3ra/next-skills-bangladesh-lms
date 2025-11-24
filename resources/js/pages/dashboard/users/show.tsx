@@ -84,6 +84,7 @@ export default function UserShow({ student }: { student: any }) {
                                             <thead className="text-gray-500 bg-gray-50 border-b">
                                                 <tr>
                                                     <th className="px-4 py-3 font-medium">Course Name</th>
+                                                    <th className="px-4 py-3 font-medium text-center">Batch</th> {/* ✅ Batch Column */}
                                                     <th className="px-4 py-3 font-medium">Enrolled Date</th>
                                                     <th className="px-4 py-3 font-medium text-right">Action</th>
                                                 </tr>
@@ -92,13 +93,19 @@ export default function UserShow({ student }: { student: any }) {
                                                 {student.enrollments.map((enroll: any) => (
                                                     <tr key={enroll.id} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3 font-medium text-gray-900">{enroll.course?.title || 'Unknown Course'}</td>
+                                                        {/* ✅ Show Batch Label */}
+                                                        <td className="px-4 py-3 text-center">
+                                                            <Badge variant="outline" className="font-mono">
+                                                                {enroll.batch_label}
+                                                            </Badge>
+                                                        </td>
                                                         <td className="px-4 py-3 text-gray-500">{new Date(enroll.created_at).toLocaleDateString()}</td>
                                                         <td className="px-4 py-3 text-right">
                                                             <DeleteModal
                                                                 url={`/dashboard/enrollments`}
                                                                 id={enroll.id}
                                                                 title="Remove Enrollment"
-                                                                description="Are you sure you want to remove this student from this course? This cannot be undone."
+                                                                description="Are you sure you want to remove this student from this course?"
                                                                 actionComponent={
                                                                     <Button size="sm" variant="destructive" className="h-8 px-3">
                                                                         <Trash2 className="w-4 h-4 mr-1" /> Remove
@@ -114,7 +121,7 @@ export default function UserShow({ student }: { student: any }) {
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-10 text-center">
                                         <BookOpen className="h-10 w-10 text-gray-300 mb-2" />
-                                        <p className="text-gray-500">No active enrollments found for this student.</p>
+                                        <p className="text-gray-500">No active enrollments found.</p>
                                     </div>
                                 )}
                             </CardContent>
@@ -124,7 +131,7 @@ export default function UserShow({ student }: { student: any }) {
                     {/* Tab 3: Payment Info */}
                     <TabsContent value="payment" className="mt-6 space-y-6">
                         
-                        {/* Section 1: Course Summary (Aggregated) */}
+                        {/* Section 1: Course Payment Summary */}
                         <Card>
                             <CardHeader>
                                 <CardTitle>Course Payment Summary</CardTitle>
@@ -136,6 +143,7 @@ export default function UserShow({ student }: { student: any }) {
                                             <thead className="text-gray-500 bg-gray-50 border-b">
                                                 <tr>
                                                     <th className="px-4 py-3 font-medium">Course Name</th>
+                                                    <th className="px-4 py-3 font-medium text-center">Batch</th> {/* ✅ Batch Column */}
                                                     <th className="px-4 py-3 font-medium">Total Price</th>
                                                     <th className="px-4 py-3 font-medium text-green-600">Paid Total</th>
                                                     <th className="px-4 py-3 font-medium text-red-600">Due</th>
@@ -146,6 +154,12 @@ export default function UserShow({ student }: { student: any }) {
                                                 {student.enrollments.map((enroll: any) => (
                                                     <tr key={enroll.id} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3 font-medium text-gray-900">{enroll.payment_info.course_title}</td>
+                                                        {/* ✅ Show Batch Label */}
+                                                        <td className="px-4 py-3 text-center">
+                                                            <Badge variant="outline" className="font-mono">
+                                                                {enroll.payment_info.batch_label}
+                                                            </Badge>
+                                                        </td>
                                                         <td className="px-4 py-3 font-bold text-gray-700">{enroll.payment_info.course_price} TK</td>
                                                         <td className="px-4 py-3 text-green-600 font-medium">{enroll.payment_info.paid_amount} TK</td>
                                                         <td className="px-4 py-3 text-red-600 font-medium">{enroll.payment_info.due_amount} TK</td>
@@ -168,7 +182,7 @@ export default function UserShow({ student }: { student: any }) {
                             </CardContent>
                         </Card>
 
-                        {/* Section 2: Detailed Transaction History (Delete allowed here) */}
+                        {/* Section 2: Detailed Transaction History */}
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle className="flex items-center gap-2">
@@ -183,7 +197,7 @@ export default function UserShow({ student }: { student: any }) {
                                                 <tr>
                                                     <th className="px-4 py-3 font-medium">Date</th>
                                                     <th className="px-4 py-3 font-medium">Course</th>
-                                                    <th className="px-4 py-3 font-medium">Invoice</th>
+                                                    <th className="px-4 py-3 font-medium text-center">Batch</th> {/* ✅ Batch Column */}
                                                     <th className="px-4 py-3 font-medium">Method</th>
                                                     <th className="px-4 py-3 font-medium text-right">Amount</th>
                                                     <th className="px-4 py-3 font-medium text-right">Action</th>
@@ -198,8 +212,11 @@ export default function UserShow({ student }: { student: any }) {
                                                         <td className="px-4 py-3 font-medium text-gray-900">
                                                             {history.course?.title || 'Unknown'}
                                                         </td>
-                                                        <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                                                            {history.invoice || history.transaction_id || 'N/A'}
+                                                        {/* ✅ Show Batch Label from History Course Relation */}
+                                                        <td className="px-4 py-3 text-center">
+                                                            <Badge variant="outline" className="font-mono text-xs">
+                                                                {history.course?.batch_no || 'Main'}
+                                                            </Badge>
                                                         </td>
                                                         <td className="px-4 py-3 capitalize text-gray-600">
                                                             {history.payment_type || 'Manual'}
@@ -209,13 +226,12 @@ export default function UserShow({ student }: { student: any }) {
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
                                                             <DeleteModal
-                                                                // ✅ Deleting specific payment history ID
                                                                 url={`/dashboard/payment-histories`} 
                                                                 id={history.id}
                                                                 title="Delete Transaction"
-                                                                description={`Are you sure you want to delete this payment of ${history.amount} TK? The due amount will increase.`}
+                                                                description={`Delete payment of ${history.amount} TK?`}
                                                                 actionComponent={
-                                                                    <Button size="sm" variant="outline" className="h-8 px-3 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200">
+                                                                    <Button size="sm" variant="outline" className="h-8 px-3 text-red-500 hover:text-red-600 border-red-200">
                                                                         <Trash2 className="w-4 h-4" />
                                                                     </Button>
                                                                 }

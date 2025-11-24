@@ -36,13 +36,14 @@ class UsersController extends Controller
     {
         $user = User::with(['enrollments.course', 'payment_histories.course'])->findOrFail($id);
 
-        // Payment Summary Processing (Course wise)
+        // Process Enrollment & Payment Data
         $user->enrollments->transform(function ($enrollment) use ($user) {
             $course = $enrollment->course;
             
             if (!$course) {
                 $enrollment->payment_info = [
                     'course_title' => 'Unknown Course',
+                    'batch_label' => 'N/A',
                     'course_price' => 0,
                     'paid_amount' => 0,
                     'due_amount' => 0,
@@ -51,7 +52,11 @@ class UsersController extends Controller
                 return $enrollment;
             }
 
-            // Calculate Total Paid for this specific course
+            // ✅ Batch Logic: If batch_no exists, show it, else show 'Main'
+            $batchLabel = $course->batch_no ? $course->batch_no : 'Main';
+            $enrollment->batch_label = $batchLabel; // For Enrollments Tab
+
+            // Calculate Payment Info
             $totalPaid = $user->payment_histories
                 ->where('course_id', $course->id)
                 ->sum('amount');
@@ -70,6 +75,7 @@ class UsersController extends Controller
 
             $enrollment->payment_info = [
                 'course_title' => $course->title,
+                'batch_label' => $batchLabel, // ✅ Added for Payment Tab
                 'course_price' => $coursePrice,
                 'paid_amount' => $totalPaid,
                 'due_amount' => $dueAmount,
@@ -85,7 +91,7 @@ class UsersController extends Controller
     }
 
     /**
-     * ✅ New Method: Delete a SINGLE payment history record
+     * Delete a SINGLE payment history record
      */
     public function destroyPaymentHistory($id)
     {
@@ -93,6 +99,18 @@ class UsersController extends Controller
         $payment->delete();
 
         return redirect()->back()->with('success', 'Single payment record deleted successfully.');
+    }
+
+    /**
+     * Delete all payments for a course
+     */
+    public function destroyPayment($userId, $courseId)
+    {
+        PaymentHistory::where('user_id', $userId)
+            ->where('course_id', $courseId)
+            ->delete();
+
+        return redirect()->back()->with('success', 'Payment history cleared for this course.');
     }
 
     /**

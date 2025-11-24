@@ -12,6 +12,7 @@ use App\Http\Controllers\JobCircularController;
 use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\PaymentHistoryController; // ✅ New Controller Import
 
 /*
 |--------------------------------------------------------------------------
@@ -23,8 +24,15 @@ Route::prefix('dashboard')->group(function () {
     // users
     Route::resource('users', UsersController::class)->only(['index', 'update', 'show']);
     
-    // ✅ Single Payment Delete Route (Updated)
+    // Delete all payments for a specific course of a user
+    Route::delete('users/{user}/courses/{course}/payment', [UsersController::class, 'destroyPayment'])->name('users.payment.destroy');
+    
+    // Delete a single payment history record
     Route::delete('payment-histories/{id}', [UsersController::class, 'destroyPaymentHistory'])->name('payment-histories.destroy');
+
+    // ✅ Payment Histories & Search Routes
+    Route::get('payment-histories/search-students', [PaymentHistoryController::class, 'searchStudents'])->name('payment-histories.search-students');
+    Route::resource('payment-histories', PaymentHistoryController::class)->only(['index', 'store']);
 
     // Category
     Route::resource('categories', CourseCategoryController::class)->only(['index', 'store', 'destroy']);

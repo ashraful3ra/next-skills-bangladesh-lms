@@ -1,5 +1,5 @@
 import { routeLastSegment } from '@/lib/route';
-import { Award, Book, Briefcase, CassetteTape, LayoutDashboard, ListChecks, Newspaper, Receipt, School, Settings, Users } from 'lucide-react';
+import { Award, Book, Briefcase, CassetteTape, CreditCard, LayoutDashboard, ListChecks, Newspaper, Receipt, School, Settings, Users } from 'lucide-react';
 
 const dashboardRoutes: DashboardRoute[] = [
    {
@@ -67,6 +67,16 @@ const dashboardRoutes: DashboardRoute[] = [
                   access: ['admin', 'collaborative', 'administrative'],
                },
             ],
+         },
+         // ✅ New Payment Histories Link
+         {
+            Icon: CreditCard,
+            name: 'Payment Histories',
+            path: route('payment-histories.index'),
+            slug: routeLastSegment(route('payment-histories.index')),
+            active: true,
+            access: ['admin', 'collaborative', 'administrative'],
+            children: [],
          },
          {
             Icon: CassetteTape,
