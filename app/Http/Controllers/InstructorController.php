@@ -53,6 +53,15 @@ class InstructorController extends Controller
     {
         $instructor = $this->instructorService->getInstructorProfile($id);
 
+        // ✅ Fix: Filter out private courses
+        if ($instructor && $instructor->courses) {
+            $publicCourses = $instructor->courses->filter(function ($course) {
+                return $course->visibility !== 'private';
+            })->values();
+            
+            $instructor->setRelation('courses', $publicCourses);
+        }
+
         // Generate meta tags for SEO and social sharing
         $system = app('system_settings');
         $siteName = $system->fields['name'] ?? 'Mentor Learning Management System';
