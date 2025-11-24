@@ -17,12 +17,7 @@ use App\Http\Controllers\UsersController;
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
- */
+*/
 
 Route::prefix('dashboard')->group(function () {
     // users
@@ -46,7 +41,10 @@ Route::prefix('dashboard')->group(function () {
     });
 
     // course enrolment
-    Route::resource('enrollments', CourseEnrollmentController::class)->only(['create', 'destroy']);
+    Route::resource('enrollments', CourseEnrollmentController::class)->only(['index', 'create', 'store', 'destroy']);
+    // Bulk Enroll Routes (New)
+    Route::post('enrollments/bulk', [CourseEnrollmentController::class, 'bulkEnroll'])->name('enrollments.bulk');
+    Route::get('enrollments/template', [CourseEnrollmentController::class, 'downloadTemplate'])->name('enrollments.template');
 
     // notification
     Route::resource('newsletters', NewsletterController::class)->only(['index', 'store', 'update', 'destroy']);

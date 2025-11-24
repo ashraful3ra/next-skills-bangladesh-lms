@@ -13,14 +13,16 @@ import * as React from 'react';
 import { ReactNode } from 'react';
 import AdminTableColumn from './partials/admin-table-columns';
 import InstructorTableColumn from './partials/instructor-table-columns';
+import BulkEnrollModal from "./partials/bulk-enroll-modal"; // নতুন মডাল ইমপোর্ট
 
 interface Props extends SharedData {
    enrollments: Pagination<Enrollment>;
+   courses: any[]; // নতুন প্রপস যুক্ত করা হয়েছে
 }
 
 const Index = (props: Props) => {
    const [sorting, setSorting] = React.useState<SortingState>([]);
-   const { translate, enrollments } = props;
+   const { translate, enrollments, courses } = props;
    const { button, dashboard } = translate;
 
    const table = useReactTable({
@@ -35,9 +37,14 @@ const Index = (props: Props) => {
 
    return (
       <div>
-         <Link href={route('enrollments.create')}>
-            <Button>{button.add_new_enrollment}</Button>
-         </Link>
+         <div className="flex gap-2">
+             <Link href={route('enrollments.create')}>
+                <Button>{button.add_new_enrollment}</Button>
+             </Link>
+             
+             {/* নতুন বাল্ক এনরোল বাটন ও মডাল */}
+             <BulkEnrollModal courses={courses} />
+         </div>
 
          <Separator className="my-6" />
 
@@ -48,8 +55,6 @@ const Index = (props: Props) => {
                globalSearch={true}
                tablePageSizes={[10, 15, 20, 25]}
                routeName="enrollments.index"
-               // Icon={<Users className="h-6 w-6 text-primary" />}
-               // exportPath={route('users.export')}
             />
 
             <Table className="border-border border-y">
