@@ -15,7 +15,7 @@ use App\Models\User;
 use App\Models\Course\Course;
 use App\Models\Course\CourseEnrollment;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\EnrollmentErrorExport; // এই লাইনটি খুবই গুরুত্বপূর্ণ
+use App\Exports\EnrollmentErrorExport;
 
 class CourseEnrollmentController extends Controller
 {
@@ -61,12 +61,17 @@ class CourseEnrollmentController extends Controller
 
     public function destroy(string $id)
     {
-        $this->enrollmentService->deleteEnrollment($id);
-        return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully deleted');
+        try {
+            $this->enrollmentService->deleteEnrollment($id);
+            return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully deleted');
+        } catch (\Exception $e) {
+            // Log the error if needed: \Log::error($e->getMessage());
+            return redirect(route('enrollments.index'))->with('error', 'Failed to delete enrollment.');
+        }
     }
 
     /**
-     * Bulk Enrollment Logic (Robust Error Handling Added)
+     * Bulk Enrollment Logic
      */
     public function bulkEnroll(Request $request)
     {
@@ -172,7 +177,7 @@ class CourseEnrollmentController extends Controller
             // যেকোনো সার্ভার এরর হলে JSON রিটার্ন করবে
             return response()->json([
                 'message' => 'Server Error: ' . $th->getMessage(),
-                'trace' => $th->getTraceAsString() // ডিবাগিংয়ের জন্য (প্রোডাকশনে অফ রাখতে পারেন)
+                'trace' => $th->getTraceAsString() 
             ], 500);
         }
     }

@@ -80,9 +80,15 @@ class CourseEnrollmentService extends MediaService
       }, 5);
    }
 
+   /**
+    * Fixed: Check if enrollment exists before deleting to prevent 500 Error
+    */
    function deleteEnrollment(string $id): void
    {
       $enrollment = CourseEnrollment::find($id);
-      $enrollment->delete();
+      
+      if ($enrollment) {
+          $enrollment->delete();
+      }
    }
 }
