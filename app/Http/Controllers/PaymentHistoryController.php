@@ -31,10 +31,25 @@ class PaymentHistoryController extends Controller
         $paymentHistories = $query->orderBy('created_at', 'desc')->paginate(10);
 
         $paymentHistories->getCollection()->transform(function ($history) {
+            // ১. রিফান্ড চেক
+            if ($history->is_refunded) {
+                $history->calculated_status = 'Refunded';
+                $history->calculated_due = 0;
+                return $history;
+            }
+
+            // ২. ফুল পেইড চেক
+            if ($history->is_full_paid) {
+                $history->calculated_status = 'Paid';
+                $history->calculated_due = 0;
+                return $history;
+            }
+
+            // ৩. ম্যানুয়াল ক্যালকুলেশন
             $coursePrice = $history->course->price ?? 0;
-            
             $totalPaid = PaymentHistory::where('user_id', $history->user_id)
                 ->where('course_id', $history->course_id)
+                ->where('is_refunded', 0)
                 ->sum('amount');
 
             $due = max(0, $coursePrice - $totalPaid);
@@ -45,8 +60,7 @@ class PaymentHistoryController extends Controller
             return $history;
         });
 
-        // ✅ Updated: Select Batch No as well
-        $courses = Course::select('id', 'title', 'batch_no')
+        $courses = Course::select('id', 'title', 'batch_no', 'price')
                     ->where('status', 'approved')
                     ->get();
 
@@ -56,9 +70,6 @@ class PaymentHistoryController extends Controller
         ]);
     }
 
-    /**
-     * ✅ New Method: Live Search for Students
-     */
     public function searchStudents(Request $request)
     {
         $query = $request->get('query');
@@ -67,7 +78,7 @@ class PaymentHistoryController extends Controller
             return response()->json([]);
         }
 
-        $students = User::where('role', 'student') // Assuming you only want students
+        $students = User::where('role', 'student')
             ->where(function($q) use ($query) {
                 $q->where('email', 'LIKE', "%{$query}%")
                   ->orWhere('phone', 'LIKE', "%{$query}%")
@@ -82,7 +93,6 @@ class PaymentHistoryController extends Controller
 
     public function store(Request $request)
     {
-        // ✅ Validation Updated: Expect 'user_id' directly
         $request->validate([
             'user_id' => 'required|exists:users,id', 
             'course_id' => 'required|exists:courses,id',
@@ -91,6 +101,16 @@ class PaymentHistoryController extends Controller
             'transaction_id' => 'nullable|string',
             'coupon_code' => 'nullable|string',
         ]);
+
+        // Check if this payment completes the course price
+        $course = Course::find($request->course_id);
+        $alreadyPaid = PaymentHistory::where('user_id', $request->user_id)
+                        ->where('course_id', $request->course_id)
+                        ->where('is_refunded', 0)
+                        ->sum('amount');
+        
+        $newTotal = $alreadyPaid + $request->amount;
+        $isFullPaid = ($course && $newTotal >= $course->price) ? 1 : 0;
 
         PaymentHistory::create([
             'user_id' => $request->user_id,
@@ -103,6 +123,8 @@ class PaymentHistoryController extends Controller
             'admin_revenue' => $request->amount,
             'instructor_revenue' => 0,
             'tax' => 0,
+            'is_full_paid' => $isFullPaid, // ✅ Status Set
+            'is_refunded' => 0
         ]);
 
         return redirect()->back()->with('success', 'Payment created successfully.');

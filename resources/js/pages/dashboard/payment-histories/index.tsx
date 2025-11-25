@@ -17,7 +17,6 @@ import { Trash2 } from 'lucide-react';
 import DeleteModal from '@/components/inertia/delete-modal';
 import { Button } from '@/components/ui/button';
 
-// কলাম ডিফিনিশন
 const columns: ColumnDef<any>[] = [
     {
         accessorKey: 'id',
@@ -54,7 +53,6 @@ const columns: ColumnDef<any>[] = [
             </span>
         ),
     },
-    // ✅ New Batch No Column
     {
         accessorKey: 'batch_no',
         header: 'Batch',
@@ -92,10 +90,12 @@ const columns: ColumnDef<any>[] = [
         cell: ({ row }) => {
             const status = row.original.calculated_status;
             let className = "bg-gray-100 text-gray-800";
+            
             if(status === 'Paid') className = "bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
             else if(status === 'Due') className = "bg-red-100 text-red-800 hover:bg-red-200 border-red-200";
             else if(status === 'Partial') className = "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200";
-            
+            else if(status === 'Refunded') className = "bg-gray-800 text-white hover:bg-gray-900 border-gray-700"; // ✅ Refunded
+
             return <Badge variant="outline" className={className}>{status}</Badge>;
         },
     },
@@ -119,7 +119,6 @@ const columns: ColumnDef<any>[] = [
 ];
 
 export default function PaymentHistories({ paymentHistories, courses }: { paymentHistories: any, courses: any[] }) {
-    
     const table = useReactTable({
         data: paymentHistories.data,
         columns,
@@ -141,11 +140,9 @@ export default function PaymentHistories({ paymentHistories, courses }: { paymen
                         routeName="payment-histories.index"
                         component={<CreatePaymentModal courses={courses} />}
                     />
-
                     <div className="border-t border-b">
                         <Table>
                             <TableHeader table={table} tableHeadClass="px-6" />
-                            
                             <TableBody>
                                 {table.getRowModel().rows.length > 0 ? (
                                     table.getRowModel().rows.map((row) => (
@@ -159,20 +156,13 @@ export default function PaymentHistories({ paymentHistories, courses }: { paymen
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={columns.length} className="h-24 text-center">
-                                            No results found.
-                                        </TableCell>
+                                        <TableCell colSpan={columns.length} className="h-24 text-center">No results found.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
                         </Table>
                     </div>
-
-                    <TableFooter 
-                        routeName="payment-histories.index" 
-                        paginationInfo={paymentHistories} 
-                        className="p-4"
-                    />
+                    <TableFooter routeName="payment-histories.index" paginationInfo={paymentHistories} className="p-4" />
                 </Card>
             </div>
         </Layout>

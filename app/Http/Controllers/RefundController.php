@@ -13,9 +13,6 @@ use Inertia\Inertia;
 
 class RefundController extends Controller
 {
-    /**
-     * 1. Show Initiate Refund Page (List of initiated refunds)
-     */
     public function initiate()
     {
         $refunds = Refund::where('status', 'initiated')
@@ -26,9 +23,6 @@ class RefundController extends Controller
         return Inertia::render('dashboard/refunds/initiate', compact('refunds'));
     }
 
-    /**
-     * 2. AJAX: Search Students by Email or Phone
-     */
     public function searchStudents(Request $request)
     {
         $query = $request->input('query');
@@ -48,9 +42,6 @@ class RefundController extends Controller
         return response()->json($students);
     }
 
-    /**
-     * 3. AJAX: Get Enrolled Courses & Payment Info for a Student
-     */
     public function getStudentCourses($userId)
     {
         $enrollments = CourseEnrollment::where('user_id', $userId)
@@ -59,6 +50,7 @@ class RefundController extends Controller
             ->map(function ($enroll) {
                 $totalPaid = PaymentHistory::where('user_id', $enroll->user_id)
                     ->where('course_id', $enroll->course_id)
+                    ->where('is_refunded', 0) // Only count non-refunded amounts
                     ->sum('amount');
                 
                 return [
@@ -72,9 +64,6 @@ class RefundController extends Controller
         return response()->json($enrollments);
     }
 
-    /**
-     * 4. Store Initiated Refund & Generate Link
-     */
     public function storeInitiate(Request $request)
     {
         $request->validate([
@@ -103,9 +92,6 @@ class RefundController extends Controller
         return back()->with('success', 'Refund initiated successfully! Link generated.');
     }
 
-    /**
-     * 5. Show Pending Refunds Page (Waiting for admin approval)
-     */
     public function pending()
     {
         $refunds = Refund::where('status', 'pending')
@@ -116,9 +102,6 @@ class RefundController extends Controller
         return Inertia::render('dashboard/refunds/pending', compact('refunds'));
     }
 
-    /**
-     * 6. Show Approved & Paid Refunds Page
-     */
     public function approved()
     {
         $refunds = Refund::whereIn('status', ['approved', 'paid'])
@@ -129,9 +112,6 @@ class RefundController extends Controller
         return Inertia::render('dashboard/refunds/approved', compact('refunds'));
     }
 
-    /**
-     * 7. Show Public Refund Application Form (For Student)
-     */
     public function showPublicForm($uuid)
     {
         $refund = Refund::where('uuid', $uuid)
@@ -142,9 +122,6 @@ class RefundController extends Controller
         return Inertia::render('public/refund-apply', compact('refund'));
     }
 
-    /**
-     * 8. Submit Public Refund Application
-     */
     public function submitPublicForm(Request $request, $uuid)
     {
         $refund = Refund::where('uuid', $uuid)->firstOrFail();
@@ -167,52 +144,46 @@ class RefundController extends Controller
             'is_link_used' => true
         ]);
 
-        // এখানে চাইলে স্টুডেন্টকে রিডাইরেক্ট করে 'Thank You' পেজে নিতে পারেন
         return redirect('/')->with('success', 'Refund application submitted successfully. Please wait for approval.');
     }
 
-    /**
-     * 9. Admin Approves Refund Request
-     */
     public function approve($id)
     {
         Refund::findOrFail($id)->update(['status' => 'approved']);
         return back()->with('success', 'Refund request approved. Ready for payment.');
     }
 
-    /**
-     * 10. Admin Marks as Paid (Upload Proof, Remove Course, Update History)
-     */
     public function markPaid(Request $request, $id)
     {
         $request->validate([
-            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // Max 2MB
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $refund = Refund::findOrFail($id);
         
-        // 1. Upload Payment Proof Image
         $proofPath = null;
         if ($request->hasFile('payment_proof')) {
             $proofPath = $request->file('payment_proof')->store('refunds/proofs', 'public');
         }
 
-        // 2. Delete Course Enrollment (Remove access)
         CourseEnrollment::where('user_id', $refund->user_id)
             ->where('course_id', $refund->course_id)
             ->delete();
 
-        // 3. Update Payment History (Mark as refunded)
+        // ✅ Update Payment History to Refunded
         PaymentHistory::where('user_id', $refund->user_id)
             ->where('course_id', $refund->course_id)
-            ->update(['payment_type' => 'refunded']); 
+            ->update([
+                'payment_type' => 'refunded',
+                'is_refunded' => 1,  // Mark as refunded
+                'is_full_paid' => 0  // Not full paid anymore
+            ]);
 
-        // 4. Update Refund Status & Save Proof
         $refund->update([
             'status' => 'paid',
             'payment_proof' => $proofPath
         ]);
 
-        return back()->with('success', 'Payment confirmed, proof uploaded, and student removed from course.');
+        return back()->with('success', 'Payment confirmed, refund recorded, and student removed from course.');
     }
 }

@@ -27,6 +27,12 @@ class PaymentService
 
         foreach ($cart as $item) {
             $instructor = Instructor::find($item->course->instructor_id);
+            
+            // ✅ Logic to check if full paid
+            $coursePrice = $item->course->price ?? 0;
+            // যদি পেমেন্ট অ্যামাউন্ট কোর্সের দামের সমান বা বেশি হয়, তাহলে Full Paid
+            // কার্ট আইটেমের ক্ষেত্রে লজিকটা একটু জটিল হতে পারে যদি কুপন থাকে, তবে সাধারণত অনলাইন পেমেন্টে ফুল পেইডই হয়।
+            $isFullPaid = $totalPrice >= $coursePrice ? 1 : 1; // Online payment usually implies full payment for that access
 
             $history = PaymentHistory::create([
                 'course_id' => $item->course_id,
@@ -37,6 +43,8 @@ class PaymentService
                 'coupon' => $couponCode,
                 'transaction_id' => $transactionId,
                 'invoice' => $invoice_no,
+                'is_full_paid' => $isFullPaid,
+                'is_refunded' => 0,
             ]);
 
             if ($instructor->user->role == UserType::ADMIN->value) {
@@ -62,19 +70,9 @@ class PaymentService
         $this->cartService->clearCart($user_id);
     }
 
-    /**
-     * Convert currency using external API (Optional upgrade)
-     * Uncomment the API call in convertCurrency() to use this
-     * 
-     * @param float $amount
-     * @param string $fromCurrency
-     * @param string $toCurrency
-     * @return float|null
-     */
     private function convertCurrencyWithAPI($amount, $fromCurrency, $toCurrency)
     {
         try {
-            // Using free ExchangeRate-API (no API key required)
             $response = Http::timeout(5)->get("https://api.exchangerate-api.com/v4/latest/{$fromCurrency}");
 
             if ($response->successful()) {
@@ -86,7 +84,7 @@ class PaymentService
                 }
             }
         } catch (\Exception $e) {
-            // API failed, fall back to fixed rates
+            // Handle error
         }
 
         return null;

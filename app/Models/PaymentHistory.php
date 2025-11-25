@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\User;
 use App\Models\Course\Course;
-use App\Models\Course\CourseCoupon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,6 +23,13 @@ class PaymentHistory extends Model
         'instructor_revenue',
         'transaction_id',
         'session_id',
+        'is_full_paid', // ✅ New Column
+        'is_refunded',  // ✅ New Column
+    ];
+
+    protected $casts = [
+        'is_full_paid' => 'boolean',
+        'is_refunded' => 'boolean',
     ];
 
     public function user()

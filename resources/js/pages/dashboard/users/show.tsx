@@ -8,7 +8,7 @@ import DeleteModal from '@/components/inertia/delete-modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, User, BookOpen, CreditCard, History, Edit, Save, X, Lock, Phone, Mail } from 'lucide-react';
+import { Trash2, User, BookOpen, CreditCard, History, Edit, Save, X, Lock, Phone, Mail, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function UserShow({ student }: { student: any }) {
     const [isEditing, setIsEditing] = useState(false);
@@ -21,6 +21,10 @@ export default function UserShow({ student }: { student: any }) {
         password: '',
         password_confirmation: '',
     });
+
+    // Filter Transactions
+    const activeTransactions = student.payment_histories.filter((h: any) => !h.is_refunded);
+    const refundedTransactions = student.payment_histories.filter((h: any) => h.is_refunded);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -85,8 +89,6 @@ export default function UserShow({ student }: { student: any }) {
                             <CardContent>
                                 <form onSubmit={submit} className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        
-                                        {/* Name Field */}
                                         <div className="space-y-2">
                                             <Label htmlFor="name" className="text-gray-500">Full Name</Label>
                                             {isEditing ? (
@@ -107,7 +109,6 @@ export default function UserShow({ student }: { student: any }) {
                                             )}
                                         </div>
 
-                                        {/* Phone Field */}
                                         <div className="space-y-2">
                                             <Label htmlFor="phone" className="text-gray-500">Phone Number</Label>
                                             {isEditing ? (
@@ -128,7 +129,6 @@ export default function UserShow({ student }: { student: any }) {
                                             )}
                                         </div>
 
-                                        {/* Email Field */}
                                         <div className="space-y-2 md:col-span-2">
                                             <Label htmlFor="email" className="text-gray-500">Email Address</Label>
                                             {isEditing ? (
@@ -150,7 +150,6 @@ export default function UserShow({ student }: { student: any }) {
                                             )}
                                         </div>
 
-                                        {/* Password Section (Only in Edit Mode) */}
                                         {isEditing && (
                                             <div className="md:col-span-2 border-t pt-4 mt-2 border-dashed">
                                                 <h3 className="text-md font-semibold mb-3 text-gray-700 flex items-center gap-2">
@@ -184,7 +183,6 @@ export default function UserShow({ student }: { student: any }) {
                                             </div>
                                         )}
 
-                                        {/* Read-only Date Field */}
                                         {!isEditing && (
                                             <div className="space-y-2">
                                                 <Label className="text-gray-500">Joined Date</Label>
@@ -195,7 +193,6 @@ export default function UserShow({ student }: { student: any }) {
                                         )}
                                     </div>
 
-                                    {/* Action Buttons */}
                                     {isEditing && (
                                         <div className="flex items-center justify-end gap-3 pt-4 border-t mt-4">
                                             <Button type="button" variant="ghost" onClick={cancelEdit} disabled={processing}>
@@ -303,8 +300,18 @@ export default function UserShow({ student }: { student: any }) {
                                                         <td className="px-4 py-3 text-red-600 font-medium">{enroll.payment_info.due_amount} TK</td>
                                                         <td className="px-4 py-3 text-center">
                                                             <Badge 
-                                                                variant={enroll.payment_info.due_amount > 0 ? "destructive" : "secondary"} 
-                                                                className={enroll.payment_info.status === 'Paid' ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}
+                                                                variant="outline" 
+                                                                className={
+                                                                    enroll.payment_info.status === 'Paid' 
+                                                                        ? "bg-green-100 text-green-800 hover:bg-green-200 border-green-200" 
+                                                                    : enroll.payment_info.status === 'Refunded' 
+                                                                        ? "bg-gray-800 text-white hover:bg-gray-700 border-gray-600" 
+                                                                    : enroll.payment_info.status === 'Partial'
+                                                                        ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                                                    : enroll.payment_info.due_amount > 0 
+                                                                        ? "bg-red-100 text-red-800 border-red-200" 
+                                                                    : "bg-gray-100 text-gray-800"
+                                                                }
                                                             >
                                                                 {enroll.payment_info.status}
                                                             </Badge>
@@ -320,7 +327,7 @@ export default function UserShow({ student }: { student: any }) {
                             </CardContent>
                         </Card>
 
-                        {/* Section 2: Detailed Transaction History */}
+                        {/* Section 2: Active Transaction History */}
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle className="flex items-center gap-2">
@@ -328,7 +335,7 @@ export default function UserShow({ student }: { student: any }) {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {student.payment_histories.length > 0 ? (
+                                {activeTransactions.length > 0 ? (
                                     <div className="overflow-hidden rounded-lg border">
                                         <table className="w-full text-sm text-left">
                                             <thead className="text-gray-500 bg-gray-50 border-b">
@@ -342,7 +349,7 @@ export default function UserShow({ student }: { student: any }) {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y">
-                                                {student.payment_histories.map((history: any) => (
+                                                {activeTransactions.map((history: any) => (
                                                     <tr key={history.id} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3 text-gray-600">
                                                             {new Date(history.created_at).toLocaleDateString()}
@@ -356,9 +363,11 @@ export default function UserShow({ student }: { student: any }) {
                                                             </Badge>
                                                         </td>
                                                         <td className="px-4 py-3 capitalize text-gray-600">
-                                                            {history.payment_type || 'Manual'}
+                                                            <Badge variant="outline" className="text-gray-600 border-gray-300">
+                                                                {history.payment_type || 'Manual'}
+                                                            </Badge>
                                                         </td>
-                                                        <td className="px-4 py-3 text-right font-bold text-gray-800">
+                                                        <td className="px-4 py-3 text-right font-bold text-green-600">
                                                             {history.amount} TK
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
@@ -382,11 +391,62 @@ export default function UserShow({ student }: { student: any }) {
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-8 text-center">
                                         <CreditCard className="h-10 w-10 text-gray-300 mb-2" />
-                                        <p className="text-gray-500">No individual payment records found.</p>
+                                        <p className="text-gray-500">No active payment records found.</p>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Section 3: Refunded History (Only Shows if Exists) */}
+                        {refundedTransactions.length > 0 && (
+                            <Card className="border-red-100 bg-red-50/30">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <CardTitle className="flex items-center gap-2 text-red-700">
+                                        <AlertCircle className="w-5 h-5"/> Refunded & Cancelled Transactions
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-hidden rounded-lg border border-red-200 bg-white">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-red-700 bg-red-50 border-b border-red-100">
+                                                <tr>
+                                                    <th className="px-4 py-3 font-medium">Refund Date</th>
+                                                    <th className="px-4 py-3 font-medium">Course</th>
+                                                    <th className="px-4 py-3 font-medium text-center">Batch</th>
+                                                    <th className="px-4 py-3 font-medium">Status</th>
+                                                    <th className="px-4 py-3 font-medium text-right">Amount Refunded</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-red-100">
+                                                {refundedTransactions.map((history: any) => (
+                                                    <tr key={history.id} className="hover:bg-red-50/50">
+                                                        <td className="px-4 py-3 text-gray-600">
+                                                            {new Date(history.updated_at).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="px-4 py-3 font-medium text-gray-900">
+                                                            {history.course?.title || 'Unknown'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <Badge variant="outline" className="font-mono text-xs border-red-200 text-red-600">
+                                                                {history.course?.batch_no || 'Main'}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <Badge variant="destructive" className="bg-red-600 hover:bg-red-700">
+                                                                Refunded
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-bold text-red-600">
+                                                            -{history.amount} TK
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
                     </TabsContent>
                 </Tabs>
