@@ -1,13 +1,42 @@
-import { Head } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { Head, useForm } from '@inertiajs/react';
 import Layout from '@/layouts/dashboard/layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import DeleteModal from '@/components/inertia/delete-modal';
 import { Button } from '@/components/ui/button';
-import { Trash2, User, BookOpen, CreditCard, History } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Trash2, User, BookOpen, CreditCard, History, Edit, Save, X, Lock, Phone, Mail } from 'lucide-react';
 
 export default function UserShow({ student }: { student: any }) {
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Form handling with Inertia
+    const { data, setData, put, processing, errors, reset } = useForm({
+        name: student.name || '',
+        email: student.email || '',
+        phone: student.phone || '',
+        password: '',
+        password_confirmation: '',
+    });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        put(route('users.update', student.id), {
+            onSuccess: () => {
+                setIsEditing(false);
+                reset('password', 'password_confirmation');
+            },
+        });
+    };
+
+    const cancelEdit = () => {
+        setIsEditing(false);
+        reset();
+    };
+
     return (
         <Layout>
             <Head title={`${student.name} - Profile`} />
@@ -42,31 +71,142 @@ export default function UserShow({ student }: { student: any }) {
                         <TabsTrigger value="payment" className="gap-2"><CreditCard className="w-4 h-4"/> Payment</TabsTrigger>
                     </TabsList>
 
-                    {/* Tab 1: Profile Info */}
+                    {/* Tab 1: Profile Info (Editable) */}
                     <TabsContent value="profile" className="mt-6">
                         <Card>
-                            <CardHeader>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
                                 <CardTitle>User Information</CardTitle>
+                                {!isEditing && (
+                                    <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="gap-2">
+                                        <Edit className="w-4 h-4" /> Edit Profile
+                                    </Button>
+                                )}
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-medium text-gray-500">Full Name</label>
-                                        <p className="text-lg font-medium text-gray-900">{student.name}</p>
+                            <CardContent>
+                                <form onSubmit={submit} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        
+                                        {/* Name Field */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="name" className="text-gray-500">Full Name</Label>
+                                            {isEditing ? (
+                                                <div>
+                                                    <Input
+                                                        id="name"
+                                                        value={data.name}
+                                                        onChange={(e) => setData('name', e.target.value)}
+                                                        placeholder="Enter full name"
+                                                        disabled={processing}
+                                                    />
+                                                    {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
+                                                </div>
+                                            ) : (
+                                                <p className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                                                    <User className="w-4 h-4 text-gray-400" /> {student.name}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Phone Field */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="phone" className="text-gray-500">Phone Number</Label>
+                                            {isEditing ? (
+                                                <div>
+                                                    <Input
+                                                        id="phone"
+                                                        value={data.phone}
+                                                        onChange={(e) => setData('phone', e.target.value)}
+                                                        placeholder="Enter phone number"
+                                                        disabled={processing}
+                                                    />
+                                                    {errors.phone && <p className="text-sm text-red-500 mt-1">{errors.phone}</p>}
+                                                </div>
+                                            ) : (
+                                                <p className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                                                    <Phone className="w-4 h-4 text-gray-400" /> {student.phone || 'Not Provided'}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Email Field */}
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="email" className="text-gray-500">Email Address</Label>
+                                            {isEditing ? (
+                                                <div>
+                                                    <Input
+                                                        id="email"
+                                                        type="email"
+                                                        value={data.email}
+                                                        onChange={(e) => setData('email', e.target.value)}
+                                                        placeholder="Enter email address"
+                                                        disabled={processing}
+                                                    />
+                                                    {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
+                                                </div>
+                                            ) : (
+                                                <p className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                                                    <Mail className="w-4 h-4 text-gray-400" /> {student.email}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Password Section (Only in Edit Mode) */}
+                                        {isEditing && (
+                                            <div className="md:col-span-2 border-t pt-4 mt-2 border-dashed">
+                                                <h3 className="text-md font-semibold mb-3 text-gray-700 flex items-center gap-2">
+                                                    <Lock className="w-4 h-4" /> Change Password <span className="text-xs font-normal text-gray-500">(Leave blank to keep current)</span>
+                                                </h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="password">New Password</Label>
+                                                        <Input
+                                                            id="password"
+                                                            type="password"
+                                                            value={data.password}
+                                                            onChange={(e) => setData('password', e.target.value)}
+                                                            placeholder="New password"
+                                                            disabled={processing}
+                                                        />
+                                                        {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password}</p>}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="password_confirmation">Confirm Password</Label>
+                                                        <Input
+                                                            id="password_confirmation"
+                                                            type="password"
+                                                            value={data.password_confirmation}
+                                                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                                                            placeholder="Confirm new password"
+                                                            disabled={processing}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Read-only Date Field */}
+                                        {!isEditing && (
+                                            <div className="space-y-2">
+                                                <Label className="text-gray-500">Joined Date</Label>
+                                                <p className="text-lg font-medium text-gray-900">
+                                                    {new Date(student.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-medium text-gray-500">Email Address</label>
-                                        <p className="text-lg font-medium text-gray-900">{student.email}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-medium text-gray-500">Phone Number</label>
-                                        <p className="text-lg font-medium text-gray-900">{student.phone || 'Not Provided'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-sm font-medium text-gray-500">Joined Date</label>
-                                        <p className="text-lg font-medium text-gray-900">{new Date(student.created_at).toLocaleDateString()}</p>
-                                    </div>
-                                </div>
+
+                                    {/* Action Buttons */}
+                                    {isEditing && (
+                                        <div className="flex items-center justify-end gap-3 pt-4 border-t mt-4">
+                                            <Button type="button" variant="ghost" onClick={cancelEdit} disabled={processing}>
+                                                <X className="w-4 h-4 mr-2" /> Cancel
+                                            </Button>
+                                            <Button type="submit" disabled={processing} className="bg-primary text-white">
+                                                <Save className="w-4 h-4 mr-2" /> Save Changes
+                                            </Button>
+                                        </div>
+                                    )}
+                                </form>
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -84,7 +224,7 @@ export default function UserShow({ student }: { student: any }) {
                                             <thead className="text-gray-500 bg-gray-50 border-b">
                                                 <tr>
                                                     <th className="px-4 py-3 font-medium">Course Name</th>
-                                                    <th className="px-4 py-3 font-medium text-center">Batch</th> {/* ✅ Batch Column */}
+                                                    <th className="px-4 py-3 font-medium text-center">Batch</th>
                                                     <th className="px-4 py-3 font-medium">Enrolled Date</th>
                                                     <th className="px-4 py-3 font-medium text-right">Action</th>
                                                 </tr>
@@ -93,7 +233,6 @@ export default function UserShow({ student }: { student: any }) {
                                                 {student.enrollments.map((enroll: any) => (
                                                     <tr key={enroll.id} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3 font-medium text-gray-900">{enroll.course?.title || 'Unknown Course'}</td>
-                                                        {/* ✅ Show Batch Label */}
                                                         <td className="px-4 py-3 text-center">
                                                             <Badge variant="outline" className="font-mono">
                                                                 {enroll.batch_label}
@@ -143,7 +282,7 @@ export default function UserShow({ student }: { student: any }) {
                                             <thead className="text-gray-500 bg-gray-50 border-b">
                                                 <tr>
                                                     <th className="px-4 py-3 font-medium">Course Name</th>
-                                                    <th className="px-4 py-3 font-medium text-center">Batch</th> {/* ✅ Batch Column */}
+                                                    <th className="px-4 py-3 font-medium text-center">Batch</th>
                                                     <th className="px-4 py-3 font-medium">Total Price</th>
                                                     <th className="px-4 py-3 font-medium text-green-600">Paid Total</th>
                                                     <th className="px-4 py-3 font-medium text-red-600">Due</th>
@@ -154,7 +293,6 @@ export default function UserShow({ student }: { student: any }) {
                                                 {student.enrollments.map((enroll: any) => (
                                                     <tr key={enroll.id} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3 font-medium text-gray-900">{enroll.payment_info.course_title}</td>
-                                                        {/* ✅ Show Batch Label */}
                                                         <td className="px-4 py-3 text-center">
                                                             <Badge variant="outline" className="font-mono">
                                                                 {enroll.payment_info.batch_label}
@@ -197,7 +335,7 @@ export default function UserShow({ student }: { student: any }) {
                                                 <tr>
                                                     <th className="px-4 py-3 font-medium">Date</th>
                                                     <th className="px-4 py-3 font-medium">Course</th>
-                                                    <th className="px-4 py-3 font-medium text-center">Batch</th> {/* ✅ Batch Column */}
+                                                    <th className="px-4 py-3 font-medium text-center">Batch</th>
                                                     <th className="px-4 py-3 font-medium">Method</th>
                                                     <th className="px-4 py-3 font-medium text-right">Amount</th>
                                                     <th className="px-4 py-3 font-medium text-right">Action</th>
@@ -212,7 +350,6 @@ export default function UserShow({ student }: { student: any }) {
                                                         <td className="px-4 py-3 font-medium text-gray-900">
                                                             {history.course?.title || 'Unknown'}
                                                         </td>
-                                                        {/* ✅ Show Batch Label from History Course Relation */}
                                                         <td className="px-4 py-3 text-center">
                                                             <Badge variant="outline" className="font-mono text-xs">
                                                                 {history.course?.batch_no || 'Main'}

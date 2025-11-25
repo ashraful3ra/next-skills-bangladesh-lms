@@ -10,6 +10,7 @@ use App\Services\UserService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class UsersController extends Controller
@@ -118,7 +119,17 @@ class UsersController extends Controller
      */
     public function update(UpdateUserRequest $request, string $id)
     {
-        $this->userService->updateUser($id, $request->validated());
+        $user = User::findOrFail($id);
+        $data = $request->validated();
+
+        // Handle Password Hashing
+        if (!empty($data['password'])) {
+            $data['password'] = Hash::make($data['password']);
+        } else {
+            unset($data['password']); // Don't update password if empty
+        }
+
+        $user->update($data);
 
         return redirect()->back()->with('success', 'User updated successfully');
     }
