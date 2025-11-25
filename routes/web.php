@@ -6,6 +6,7 @@ use App\Http\Controllers\InstructorController;
 use App\Http\Controllers\JobCircularController;
 use App\Http\Controllers\SubscribeController;
 use App\Http\Controllers\SystemController;
+use App\Http\Controllers\RefundController; // ✅ Added RefundController
 use Illuminate\Support\Facades\Route;
 use Modules\Installer\Http\Controllers\InstallerController;
 
@@ -21,3 +22,9 @@ Route::controller(CourseController::class)->group(function () {
 
 Route::get('instructors/{instructor}', [InstructorController::class, 'show'])->name('instructors.show');
 Route::resource('subscribes', SubscribeController::class)->only(['index', 'store']);
+
+// ====================================================
+// ✅ REFUND APPLICATION PUBLIC ROUTES (New Feature)
+// ====================================================
+Route::get('/refund-apply/{uuid}', [RefundController::class, 'showPublicForm'])->name('refunds.public-form');
+Route::post('/refund-apply/{uuid}', [RefundController::class, 'submitPublicForm'])->name('refunds.public-submit');

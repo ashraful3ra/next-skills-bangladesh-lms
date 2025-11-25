@@ -12,7 +12,8 @@ use App\Http\Controllers\JobCircularController;
 use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\UsersController;
-use App\Http\Controllers\PaymentHistoryController; // ✅ New Controller Import
+use App\Http\Controllers\PaymentHistoryController;
+use App\Http\Controllers\RefundController; // ✅ Added RefundController
 
 /*
 |--------------------------------------------------------------------------
@@ -30,9 +31,29 @@ Route::prefix('dashboard')->group(function () {
     // Delete a single payment history record
     Route::delete('payment-histories/{id}', [UsersController::class, 'destroyPaymentHistory'])->name('payment-histories.destroy');
 
-    // ✅ Payment Histories & Search Routes
+    // Payment Histories & Search Routes
     Route::get('payment-histories/search-students', [PaymentHistoryController::class, 'searchStudents'])->name('payment-histories.search-students');
     Route::resource('payment-histories', PaymentHistoryController::class)->only(['index', 'store']);
+
+    // ====================================================
+    // ✅ REFUND SYSTEM ROUTES (New Feature)
+    // ====================================================
+    
+    // 1. Refund Pages
+    Route::get('/refunds/initiate', [RefundController::class, 'initiate'])->name('refunds.initiate');
+    Route::get('/refunds/pending', [RefundController::class, 'pending'])->name('refunds.pending');
+    Route::get('/refunds/approved', [RefundController::class, 'approved'])->name('refunds.approved');
+    
+    // 2. Refund Actions
+    Route::post('/refunds/store-initiate', [RefundController::class, 'storeInitiate'])->name('refunds.store-initiate');
+    Route::post('/refunds/{id}/approve', [RefundController::class, 'approve'])->name('refunds.approve');
+    Route::post('/refunds/{id}/mark-paid', [RefundController::class, 'markPaid'])->name('refunds.mark-paid');
+    
+    // 3. AJAX/API Routes for Modal (Student Search & Course Fetch)
+    Route::get('/api/search-students', [RefundController::class, 'searchStudents'])->name('api.search-students');
+    Route::get('/api/student-courses/{id}', [RefundController::class, 'getStudentCourses'])->name('api.student-courses');
+
+    // ====================================================
 
     // Category
     Route::resource('categories', CourseCategoryController::class)->only(['index', 'store', 'destroy']);

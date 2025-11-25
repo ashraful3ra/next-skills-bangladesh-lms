@@ -1,5 +1,5 @@
 import { routeLastSegment } from '@/lib/route';
-import { Award, Book, Briefcase, CassetteTape, CreditCard, LayoutDashboard, ListChecks, Newspaper, Receipt, School, Settings, Users } from 'lucide-react';
+import { Award, Book, Briefcase, CassetteTape, CreditCard, LayoutDashboard, ListChecks, Newspaper, Receipt, RefreshCcw, School, Settings, Users } from 'lucide-react';
 
 const dashboardRoutes: DashboardRoute[] = [
    {
@@ -68,7 +68,7 @@ const dashboardRoutes: DashboardRoute[] = [
                },
             ],
          },
-         // ✅ New Payment Histories Link
+         // ✅ Payment Histories Link
          {
             Icon: CreditCard,
             name: 'Payment Histories',
@@ -77,6 +77,35 @@ const dashboardRoutes: DashboardRoute[] = [
             active: true,
             access: ['admin', 'collaborative', 'administrative'],
             children: [],
+         },
+         // ✅ New Refund System Links
+         {
+            Icon: RefreshCcw,
+            name: 'Refund System',
+            path: '',
+            slug: 'refunds',
+            active: true,
+            access: ['admin', 'collaborative', 'administrative'],
+            children: [
+               {
+                  name: 'Initiate Refund',
+                  slug: routeLastSegment(route('refunds.initiate')),
+                  path: route('refunds.initiate'),
+                  access: ['admin', 'collaborative', 'administrative'],
+               },
+               {
+                  name: 'Pending Requests',
+                  slug: routeLastSegment(route('refunds.pending')),
+                  path: route('refunds.pending'),
+                  access: ['admin', 'collaborative', 'administrative'],
+               },
+               {
+                  name: 'Approved Refunds',
+                  slug: routeLastSegment(route('refunds.approved')),
+                  path: route('refunds.approved'),
+                  access: ['admin', 'collaborative', 'administrative'],
+               },
+            ],
          },
          {
             Icon: CassetteTape,
