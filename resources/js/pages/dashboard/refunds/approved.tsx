@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle, Eye, Printer, Upload, AlertCircle } from 'lucide-react';
+import { CheckCircle, Eye, Printer, Upload, AlertCircle, User, UserCheck, ShieldCheck } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 
 interface Refund {
@@ -21,6 +21,10 @@ interface Refund {
     status: string;
     payment_proof?: string;
     updated_at: string;
+    // ✅ New Relations Added
+    initiator?: { name: string };
+    approver?: { name: string };
+    payer?: { name: string };
 }
 
 export default function ApprovedRefunds({ refunds }: { refunds: Refund[] }) {
@@ -132,7 +136,7 @@ export default function ApprovedRefunds({ refunds }: { refunds: Refund[] }) {
                         {selectedRefund && (
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 h-full min-h-[600px]">
                                 
-                                {/* Left Side: Info & Form */}
+                                {/* ✅ Left Side: Info & Form (Includes Admin Tracking) */}
                                 <div className="lg:col-span-4 p-6 bg-white border-r border-gray-200 space-y-6 overflow-y-auto">
                                     
                                     {/* Status */}
@@ -143,6 +147,43 @@ export default function ApprovedRefunds({ refunds }: { refunds: Refund[] }) {
                                         ) : (
                                             <Badge variant="secondary" className="bg-blue-600 text-white px-3 py-1">APPROVED</Badge>
                                         )}
+                                    </div>
+
+                                    {/* ✅ NEW: Tracking / Audit Section (Hidden from Receipt) */}
+                                    <div className="space-y-3 p-4 border rounded-md bg-slate-50">
+                                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                            <ShieldCheck className="w-3 h-3" /> Audit Trail
+                                        </h4>
+                                        
+                                        {/* Initiated By */}
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-500 flex items-center gap-2 text-xs">
+                                                <User className="w-3 h-3" /> Initiated By:
+                                            </span>
+                                            <span className="font-medium text-gray-900">
+                                                {selectedRefund.initiator?.name || 'Student/System'}
+                                            </span>
+                                        </div>
+
+                                        {/* Approved By */}
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-500 flex items-center gap-2 text-xs">
+                                                <UserCheck className="w-3 h-3" /> Approved By:
+                                            </span>
+                                            <span className="font-medium text-blue-700">
+                                                {selectedRefund.approver?.name || 'Pending'}
+                                            </span>
+                                        </div>
+
+                                        {/* Paid By */}
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-500 flex items-center gap-2 text-xs">
+                                                <CheckCircle className="w-3 h-3" /> Paid By:
+                                            </span>
+                                            <span className="font-medium text-green-700">
+                                                {selectedRefund.payer?.name || 'Pending'}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     {/* Refund Reason */}
@@ -210,17 +251,18 @@ export default function ApprovedRefunds({ refunds }: { refunds: Refund[] }) {
                                 </div>
 
                                 {/* Right Side: Receipt Preview (Compact A4) */}
+                                {/* This section is what gets printed due to `contentRef={printRef}` */}
                                 <div className="lg:col-span-8 bg-gray-100 p-8 overflow-y-auto flex justify-center items-start">
                                     <div 
                                         ref={printRef} 
                                         className="bg-white text-black shadow-xl relative print:shadow-none" 
                                         style={{ 
                                             width: '210mm', 
-                                            height: '297mm', // Fixed A4 Height
-                                            padding: '40px', // Padding
+                                            height: '297mm', 
+                                            padding: '40px', 
                                             margin: '0 auto',
                                             boxSizing: 'border-box',
-                                            overflow: 'hidden' // Prevent overflow to 2nd page
+                                            overflow: 'hidden'
                                         }}
                                     >
                                         
@@ -300,12 +342,11 @@ export default function ApprovedRefunds({ refunds }: { refunds: Refund[] }) {
                                             </div>
                                         </div>
 
-                                        {/* Proof Image - UPDATED HEIGHT & WIDTH */}
+                                        {/* Proof Image */}
                                         {previewUrl ? (
                                             <div className="mt-4 border-t pt-4 page-break-inside-avoid">
                                                 <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-2 tracking-wider">Attached Payment Proof</h3>
                                                 <div className="flex justify-center border border-gray-200 p-1 rounded bg-gray-50">
-                                                    {/* Height Increased to 480px and width to full to fill space */}
                                                     <img src={previewUrl} alt="Proof" className="max-h-[480px] w-full object-contain" />
                                                 </div>
                                             </div>

@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Course\Course;
 use App\Models\Course\CourseEnrollment;
 use App\Models\PaymentHistory; // নতুন ইম্পোর্ট
+use App\Models\ActivityLog; // ✅ লগ মডেল ইম্পোর্ট
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\EnrollmentErrorExport;
 use Illuminate\Support\Str;
@@ -39,6 +40,11 @@ class CourseEnrollmentController extends Controller
         );
         $enrollments = $this->enrollmentService->getEnrollments($data, true);
         
+        // ✅ ফিক্স: এনরোলমেন্ট লিস্টে 'enrolledBy' রিলেশন লোড করা যাতে ফ্রন্টএন্ডে নাম দেখানো যায়
+        if($enrollments instanceof \Illuminate\Pagination\LengthAwarePaginator) {
+            $enrollments->getCollection()->load('enrolledBy');
+        }
+
         $courses = Course::select('id', 'title', 'batch_no')
                     ->where('status', 'approved')
                     ->get();
@@ -57,14 +63,30 @@ class CourseEnrollmentController extends Controller
 
     public function store(StoreCourseEnrollmentRequest $request)
     {
+        // ✅ ফিক্স: ম্যানুয়াল এনরোলমেন্টের সময় লগড ইউজারকে 'enrolled_by' হিসেবে সেট করা
+        $data = $request->validated();
+        $data['enrolled_by'] = Auth::id();
+
         // Service handle korbe creation logic (Enrollment + Payment History)
-        $this->enrollmentService->createCourseEnroll($request->validated());
+        $this->enrollmentService->createCourseEnroll($data);
         return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully done in this course');
     }
 
     public function destroy(string $id)
     {
         try {
+            // ✅ ফিক্স: ডিলিট করার আগে লগ (Activity Log) তৈরি করা
+            $enrollment = CourseEnrollment::with(['user', 'course'])->find($id);
+            
+            if ($enrollment) {
+                ActivityLog::create([
+                    'action' => 'deleted_enrollment',
+                    'description' => "Deleted enrollment ID #{$id} for student {$enrollment->user->name} in course {$enrollment->course->title}",
+                    'performed_by' => Auth::id(), // কে ডিলিট করল তার আইডি
+                    'data' => json_encode($enrollment->toArray())
+                ]);
+            }
+
             $this->enrollmentService->deleteEnrollment($id);
             return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully deleted');
         } catch (\Exception $e) {
@@ -96,6 +118,7 @@ class CourseEnrollmentController extends Controller
 
             $failedRows = [];
             $successCount = 0;
+            $currentUserId = Auth::id(); // ✅ এডমিন আইডি নেওয়া
 
             foreach ($rows as $row) {
                 // 0: Name, 1: Phone, 2: Email, 3: Amount, 4: Method, 5: TrxID
@@ -144,6 +167,7 @@ class CourseEnrollmentController extends Controller
                     'course_id' => $courseId,
                     'user_id' => $student->id,
                     'enrollment_type' => $enrollmentType,
+                    'enrolled_by' => $currentUserId, // ✅ ফিক্স: বাল্ক এনরোল যিনি করছেন তার আইডি
                     'entry_date' => now(),
                 ]);
 
@@ -151,6 +175,7 @@ class CourseEnrollmentController extends Controller
                 if ($amount > 0) {
                     PaymentHistory::create([
                         'user_id' => $student->id,
+                        'created_by' => $currentUserId, // ✅ ফিক্স: পেমেন্ট ক্রিয়েটর হিসেবে এডমিন আইডি
                         'course_id' => $courseId,
                         'amount' => $amount,
                         'payment_type' => $method,

@@ -15,8 +15,9 @@ class RefundController extends Controller
 {
     public function initiate()
     {
+        // Ekhane 'initiator' relation load kora hoyeche jate dekha jay ke initiate koreche
         $refunds = Refund::where('status', 'initiated')
-            ->with(['user', 'course'])
+            ->with(['user', 'course', 'initiator']) 
             ->latest()
             ->get();
 
@@ -86,7 +87,8 @@ class RefundController extends Controller
             'refund_amount' => $request->refund_amount,
             'service_charge_percentage' => $request->service_charge_percentage,
             'service_charge_amount' => $request->service_charge_amount,
-            'status' => 'initiated'
+            'status' => 'initiated',
+            'initiated_by' => auth()->id(), // <-- Notun: Ke initiate korche ta save hocche
         ]);
 
         return back()->with('success', 'Refund initiated successfully! Link generated.');
@@ -95,7 +97,7 @@ class RefundController extends Controller
     public function pending()
     {
         $refunds = Refund::where('status', 'pending')
-            ->with(['user', 'course'])
+            ->with(['user', 'course', 'initiator']) // <-- Initiator relation add kora holo
             ->latest()
             ->get();
 
@@ -105,7 +107,7 @@ class RefundController extends Controller
     public function approved()
     {
         $refunds = Refund::whereIn('status', ['approved', 'paid'])
-            ->with(['user', 'course'])
+            ->with(['user', 'course', 'initiator', 'approver', 'payer']) // <-- Sob relation load kora holo
             ->latest()
             ->get();
 
@@ -149,7 +151,10 @@ class RefundController extends Controller
 
     public function approve($id)
     {
-        Refund::findOrFail($id)->update(['status' => 'approved']);
+        Refund::findOrFail($id)->update([
+            'status' => 'approved',
+            'approved_by' => auth()->id() // <-- Notun: Ke approve korche ta save hocche
+        ]);
         return back()->with('success', 'Refund request approved. Ready for payment.');
     }
 
@@ -166,6 +171,9 @@ class RefundController extends Controller
             $proofPath = $request->file('payment_proof')->store('refunds/proofs', 'public');
         }
 
+        // Optional: Jodi enrollment delete log korte chao, tahole ekhane ActivityLog create koro
+        // \App\Models\ActivityLog::create([...]);
+
         CourseEnrollment::where('user_id', $refund->user_id)
             ->where('course_id', $refund->course_id)
             ->delete();
@@ -181,7 +189,8 @@ class RefundController extends Controller
 
         $refund->update([
             'status' => 'paid',
-            'payment_proof' => $proofPath
+            'payment_proof' => $proofPath,
+            'paid_by' => auth()->id() // <-- Notun: Ke pay korche ta save hocche
         ]);
 
         return back()->with('success', 'Payment confirmed, refund recorded, and student removed from course.');

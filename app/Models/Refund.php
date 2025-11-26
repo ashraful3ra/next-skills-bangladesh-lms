@@ -21,4 +21,8 @@ class Refund extends Model
     {
         return $this->belongsTo(Course::class);
     }
+
+    public function initiator() { return $this->belongsTo(\App\Models\User::class, 'initiated_by'); }
+    public function approver() { return $this->belongsTo(\App\Models\User::class, 'approved_by'); }
+    public function payer() { return $this->belongsTo(\App\Models\User::class, 'paid_by'); }
 }

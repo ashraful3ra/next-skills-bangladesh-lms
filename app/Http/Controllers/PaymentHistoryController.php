@@ -6,15 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Course\Course;
 use App\Models\PaymentHistory;
 use App\Models\User;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentHistoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = PaymentHistory::with(['user', 'course']);
+        // ✅ createdBy রিলেশন লোড করা হচ্ছে
+        $query = PaymentHistory::with(['user', 'course', 'createdBy']);
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -22,8 +25,7 @@ class PaymentHistoryController extends Controller
                   ->orWhere('invoice', 'like', '%' . $request->search . '%')
                   ->orWhereHas('user', function ($q) use ($request) {
                       $q->where('name', 'like', '%' . $request->search . '%')
-                        ->orWhere('email', 'like', '%' . $request->search . '%')
-                        ->orWhere('phone', 'like', '%' . $request->search . '%');
+                        ->orWhere('email', 'like', '%' . $request->search . '%');
                   });
             });
         }
@@ -31,21 +33,17 @@ class PaymentHistoryController extends Controller
         $paymentHistories = $query->orderBy('created_at', 'desc')->paginate(10);
 
         $paymentHistories->getCollection()->transform(function ($history) {
-            // ১. রিফান্ড চেক
             if ($history->is_refunded) {
                 $history->calculated_status = 'Refunded';
                 $history->calculated_due = 0;
                 return $history;
             }
-
-            // ২. ফুল পেইড চেক
             if ($history->is_full_paid) {
                 $history->calculated_status = 'Paid';
                 $history->calculated_due = 0;
                 return $history;
             }
 
-            // ৩. ম্যানুয়াল ক্যালকুলেশন
             $coursePrice = $history->course->price ?? 0;
             $totalPaid = PaymentHistory::where('user_id', $history->user_id)
                 ->where('course_id', $history->course_id)
@@ -53,7 +51,6 @@ class PaymentHistoryController extends Controller
                 ->sum('amount');
 
             $due = max(0, $coursePrice - $totalPaid);
-
             $history->calculated_due = $due;
             $history->calculated_status = $due > 0 ? ($totalPaid > 0 ? 'Partial' : 'Due') : 'Paid';
             
@@ -73,10 +70,7 @@ class PaymentHistoryController extends Controller
     public function searchStudents(Request $request)
     {
         $query = $request->get('query');
-
-        if (!$query) {
-            return response()->json([]);
-        }
+        if (!$query) return response()->json([]);
 
         $students = User::where('role', 'student')
             ->where(function($q) use ($query) {
@@ -102,7 +96,6 @@ class PaymentHistoryController extends Controller
             'coupon_code' => 'nullable|string',
         ]);
 
-        // Check if this payment completes the course price
         $course = Course::find($request->course_id);
         $alreadyPaid = PaymentHistory::where('user_id', $request->user_id)
                         ->where('course_id', $request->course_id)
@@ -114,6 +107,7 @@ class PaymentHistoryController extends Controller
 
         PaymentHistory::create([
             'user_id' => $request->user_id,
+            'created_by' => Auth::id(), // ✅ যিনি ক্রিয়েট করছেন তার আইডি সেভ হবে
             'course_id' => $request->course_id,
             'amount' => $request->amount,
             'payment_type' => $request->payment_method,
@@ -123,10 +117,27 @@ class PaymentHistoryController extends Controller
             'admin_revenue' => $request->amount,
             'instructor_revenue' => 0,
             'tax' => 0,
-            'is_full_paid' => $isFullPaid, // ✅ Status Set
+            'is_full_paid' => $isFullPaid,
             'is_refunded' => 0
         ]);
 
         return redirect()->back()->with('success', 'Payment created successfully.');
+    }
+
+    public function destroy($id)
+    {
+        $payment = PaymentHistory::with('user')->findOrFail($id);
+
+        // ডিলেট করার লগ রাখা
+        ActivityLog::create([
+            'action' => 'deleted_payment',
+            'description' => "Deleted payment ID #{$id} of amount {$payment->amount} for user " . ($payment->user->name ?? 'Unknown'),
+            'performed_by' => Auth::id(),
+            'data' => json_encode($payment->toArray())
+        ]);
+
+        $payment->delete();
+
+        return redirect()->back()->with('success', 'Payment record deleted and logged successfully.');
     }
 }

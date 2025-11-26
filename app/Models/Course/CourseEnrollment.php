@@ -13,10 +13,10 @@ class CourseEnrollment extends Model
     protected $fillable = [
         'user_id',
         'course_id',
-        'enrollment_type', // 'paid' or 'free'
+        'enrolled_by', // <--- Notun Column
+        'enrollment_type',
         'entry_date',
         'expiry_date',
-        // Payment columns removed (moved to payment_histories table)
     ];
 
     public function user()
@@ -27,5 +27,11 @@ class CourseEnrollment extends Model
     public function course()
     {
         return $this->belongsTo(Course::class);
+    }
+
+    // Notun Relation: Ke enroll koreche
+    public function enrolledBy()
+    {
+        return $this->belongsTo(User::class, 'enrolled_by');
     }
 }

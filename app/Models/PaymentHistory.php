@@ -13,6 +13,7 @@ class PaymentHistory extends Model
 
     protected $fillable = [
         'user_id',
+        'created_by', // <--- Notun Column
         'course_id',
         'payment_type',
         'tax',
@@ -23,8 +24,8 @@ class PaymentHistory extends Model
         'instructor_revenue',
         'transaction_id',
         'session_id',
-        'is_full_paid', // ✅ New Column
-        'is_refunded',  // ✅ New Column
+        'is_full_paid',
+        'is_refunded',
     ];
 
     protected $casts = [
@@ -40,5 +41,11 @@ class PaymentHistory extends Model
     public function course()
     {
         return $this->belongsTo(Course::class);
+    }
+
+    // Notun Relation: Ke payment create koreche
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }
