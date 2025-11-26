@@ -14,11 +14,12 @@ use Inertia\Inertia;
 use App\Models\User;
 use App\Models\Course\Course;
 use App\Models\Course\CourseEnrollment;
-use App\Models\PaymentHistory; // নতুন ইম্পোর্ট
-use App\Models\ActivityLog; // ✅ লগ মডেল ইম্পোর্ট
+use App\Models\PaymentHistory;
+use App\Models\ActivityLog;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\EnrollmentErrorExport;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class CourseEnrollmentController extends Controller
 {
@@ -40,7 +41,6 @@ class CourseEnrollmentController extends Controller
         );
         $enrollments = $this->enrollmentService->getEnrollments($data, true);
         
-        // ✅ ফিক্স: এনরোলমেন্ট লিস্টে 'enrolledBy' রিলেশন লোড করা যাতে ফ্রন্টএন্ডে নাম দেখানো যায়
         if($enrollments instanceof \Illuminate\Pagination\LengthAwarePaginator) {
             $enrollments->getCollection()->load('enrolledBy');
         }
@@ -63,11 +63,9 @@ class CourseEnrollmentController extends Controller
 
     public function store(StoreCourseEnrollmentRequest $request)
     {
-        // ✅ ফিক্স: ম্যানুয়াল এনরোলমেন্টের সময় লগড ইউজারকে 'enrolled_by' হিসেবে সেট করা
         $data = $request->validated();
         $data['enrolled_by'] = Auth::id();
 
-        // Service handle korbe creation logic (Enrollment + Payment History)
         $this->enrollmentService->createCourseEnroll($data);
         return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully done in this course');
     }
@@ -75,22 +73,38 @@ class CourseEnrollmentController extends Controller
     public function destroy(string $id)
     {
         try {
-            // ✅ ফিক্স: ডিলিট করার আগে লগ (Activity Log) তৈরি করা
+            // এনরোলমেন্ট খুঁজে বের করা
             $enrollment = CourseEnrollment::with(['user', 'course'])->find($id);
             
             if ($enrollment) {
-                ActivityLog::create([
-                    'action' => 'deleted_enrollment',
-                    'description' => "Deleted enrollment ID #{$id} for student {$enrollment->user->name} in course {$enrollment->course->title}",
-                    'performed_by' => Auth::id(), // কে ডিলিট করল তার আইডি
-                    'data' => json_encode($enrollment->toArray())
-                ]);
+                // সেফটি চেক: ইউজার বা কোর্স ডিলিট হয়ে থাকলে নাম 'Unknown' দেখাবে
+                $studentName = optional($enrollment->user)->name ?? 'Unknown Student';
+                $courseTitle = optional($enrollment->course)->title ?? 'Unknown Course';
+
+                // লগ তৈরি করা (যদি টেবিল থাকে এবং মডেল কাজ করে)
+                try {
+                    ActivityLog::create([
+                        'action' => 'deleted_enrollment',
+                        'description' => "Deleted enrollment ID #{$id} for student {$studentName} in course {$courseTitle}",
+                        'performed_by' => Auth::id(),
+                        'data' => json_encode($enrollment->toArray())
+                    ]);
+                } catch (\Exception $logEx) {
+                    // লগ তৈরিতে সমস্যা হলে ইগনোর করুন, যাতে মেইন ডিলিট আটক না যায়
+                    Log::error('Activity Log Creation Failed: ' . $logEx->getMessage());
+                }
+
+                // সার্ভিস দিয়ে এনরোলমেন্ট ডিলিট করা
+                $this->enrollmentService->deleteEnrollment($id);
+                
+                return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully deleted');
+            } else {
+                return redirect(route('enrollments.index'))->with('error', 'Enrollment not found.');
             }
 
-            $this->enrollmentService->deleteEnrollment($id);
-            return redirect(route('enrollments.index'))->with('success', 'Enrollment is successfully deleted');
         } catch (\Exception $e) {
-            return redirect(route('enrollments.index'))->with('error', 'Failed to delete enrollment.');
+            Log::error('Enrollment Delete Error: ' . $e->getMessage());
+            return redirect(route('enrollments.index'))->with('error', 'Failed to delete enrollment. Error: ' . $e->getMessage());
         }
     }
 
@@ -118,10 +132,9 @@ class CourseEnrollmentController extends Controller
 
             $failedRows = [];
             $successCount = 0;
-            $currentUserId = Auth::id(); // ✅ এডমিন আইডি নেওয়া
+            $currentUserId = Auth::id();
 
             foreach ($rows as $row) {
-                // 0: Name, 1: Phone, 2: Email, 3: Amount, 4: Method, 5: TrxID
                 $phone = $row[1] ?? null;
                 $email = $row[2] ?? null;
                 
@@ -152,7 +165,6 @@ class CourseEnrollmentController extends Controller
                     continue;
                 }
 
-                // Logic: If amount > 0, type is paid, otherwise free
                 if ($amount > 0 || !empty($trxid)) {
                     $enrollmentType = 'paid';
                     if (empty($method)) $method = 'manual';
@@ -162,20 +174,18 @@ class CourseEnrollmentController extends Controller
                     $method = null;
                 }
 
-                // 1. Create Enrollment (Without Payment Data)
                 CourseEnrollment::create([
                     'course_id' => $courseId,
                     'user_id' => $student->id,
                     'enrollment_type' => $enrollmentType,
-                    'enrolled_by' => $currentUserId, // ✅ ফিক্স: বাল্ক এনরোল যিনি করছেন তার আইডি
+                    'enrolled_by' => $currentUserId,
                     'entry_date' => now(),
                 ]);
 
-                // 2. Create Payment History (If Amount > 0)
                 if ($amount > 0) {
                     PaymentHistory::create([
                         'user_id' => $student->id,
-                        'created_by' => $currentUserId, // ✅ ফিক্স: পেমেন্ট ক্রিয়েটর হিসেবে এডমিন আইডি
+                        'created_by' => $currentUserId,
                         'course_id' => $courseId,
                         'amount' => $amount,
                         'payment_type' => $method,

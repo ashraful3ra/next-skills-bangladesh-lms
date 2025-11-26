@@ -5,7 +5,7 @@ namespace App\Services\Course;
 use App\Models\Course\CourseEnrollment;
 use App\Models\Course\SectionLesson;
 use App\Models\Course\SectionQuiz;
-use App\Models\PaymentHistory; // নতুন ইম্পোর্ট
+use App\Models\PaymentHistory;
 use App\Services\Course\CourseSectionService;
 use App\Services\MediaService;
 use Illuminate\Support\Facades\DB;
@@ -52,9 +52,6 @@ class CourseEnrollmentService extends MediaService
       return $enrollments->get();
    }
 
-   /**
-    * Updated Logic: Separate Enrollment and Payment History
-    */
    function createCourseEnroll(array $data): CourseEnrollment
    {
       return DB::transaction(function () use ($data) {
@@ -62,16 +59,16 @@ class CourseEnrollmentService extends MediaService
          $userId = $data['user_id'];
          $courseSectionService = new CourseSectionService();
 
-         // Amount check logic
          $amount = isset($data['amount']) ? (float)$data['amount'] : 0;
 
-         // 1. Create Enrollment (Clean Data)
+         // 1. Create Enrollment
          $enrollment = CourseEnrollment::create([
              'course_id' => $courseId,
              'user_id' => $userId,
              'entry_date' => now(),
              'enrollment_type' => $amount > 0 ? 'paid' : 'free',
              'expiry_date' => $data['expiry_date'] ?? null,
+             'enrolled_by' => $data['enrolled_by'] ?? null, // Added enrolled_by
          ]);
 
          // 2. Insert into PaymentHistory if Amount > 0
@@ -83,7 +80,7 @@ class CourseEnrollmentService extends MediaService
                  'payment_type' => $data['payment_method'] ?? 'manual',
                  'transaction_id' => $data['transaction_id'] ?? null,
                  'invoice' => 'INV-' . strtoupper(Str::random(8)),
-                 'admin_revenue' => $amount, // Manual enroll usually goes to admin
+                 'admin_revenue' => $amount,
                  'instructor_revenue' => 0,
                  'tax' => 0,
                  'coupon' => $data['coupon_code'] ?? null,
@@ -114,14 +111,6 @@ class CourseEnrollmentService extends MediaService
       $enrollment = CourseEnrollment::find($id);
       
       if ($enrollment) {
-          // We delete only enrollment. Payment history stays as financial record.
-          // If you want to delete payment history too, uncomment below:
-          /*
-          PaymentHistory::where('user_id', $enrollment->user_id)
-                        ->where('course_id', $enrollment->course_id)
-                        ->delete();
-          */
-          
           $enrollment->delete();
       }
    }
