@@ -42,6 +42,7 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
+            'phone' => 'required|string|max:20', // [UPDATED] Phone validation added
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'recaptcha_status' => 'required|boolean',
             'recaptcha' => 'nullable|captcha|required_if:recaptcha_status,true',
@@ -50,6 +51,7 @@ class RegisteredUserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $request->phone, // [UPDATED] Saving phone number to database
             'role' => 'student',
             'status' => 1,
             'password' => Hash::make($request->password),

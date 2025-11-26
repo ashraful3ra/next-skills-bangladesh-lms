@@ -27,6 +27,7 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
    const { data, setData, post, processing, errors, reset } = useForm({
       name: '',
       email: '',
+      phone: '', // [UPDATED] Phone field added here
       password: '',
       password_confirmation: '',
       recaptcha: '',
@@ -84,13 +85,30 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
                   <InputError message={errors.email} />
                </div>
 
+               {/* [UPDATED] Phone Input Field Added Here */}
+               <div className="grid gap-2">
+                  <Label htmlFor="phone">{input.phone ?? 'Phone Number'}</Label>
+                  <Input
+                     id="phone"
+                     type="tel"
+                     required
+                     tabIndex={3}
+                     autoComplete="tel"
+                     value={data.phone}
+                     onChange={(e) => setData('phone', e.target.value)}
+                     disabled={processing}
+                     placeholder={input.phone_placeholder ?? 'Enter your phone number'}
+                  />
+                  <InputError message={errors.phone} />
+               </div>
+
                <div className="grid gap-2">
                   <Label htmlFor="password">{input.password}</Label>
                   <Input
                      id="password"
                      type="password"
                      required
-                     tabIndex={3}
+                     tabIndex={4} // [UPDATED] Index incremented
                      autoComplete="new-password"
                      value={data.password}
                      onChange={(e) => setData('password', e.target.value)}
@@ -106,7 +124,7 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
                      id="password_confirmation"
                      type="password"
                      required
-                     tabIndex={4}
+                     tabIndex={5} // [UPDATED] Index incremented
                      autoComplete="new-password"
                      value={data.password_confirmation}
                      onChange={(e) => setData('password_confirmation', e.target.value)}
@@ -123,7 +141,7 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
                   </div>
                )}
 
-               <LoadingButton className="mt-2 w-full" tabIndex={5} loading={processing}>
+               <LoadingButton className="mt-2 w-full" tabIndex={6} loading={processing}>
                   {button.create}
                </LoadingButton>
             </div>
@@ -144,7 +162,7 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
 
             <div className="text-muted-foreground text-center text-sm">
                {auth.have_account}{' '}
-               <TextLink href={route('login')} tabIndex={6}>
+               <TextLink href={route('login')} tabIndex={7}>
                   {button.login}
                </TextLink>
             </div>

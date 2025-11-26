@@ -23,6 +23,7 @@ class UpdateStudentProfileRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20', // [ADD] Phone validation
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:1024',
             'social_links' => 'nullable|json',
         ];

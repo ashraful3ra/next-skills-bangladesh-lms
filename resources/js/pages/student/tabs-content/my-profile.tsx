@@ -78,6 +78,7 @@ const MyProfile = () => {
 
    const { data, post, setData, processing } = useForm({
       name: user.name || '',
+      phone: user.phone || '', // [ADD] ১. ফোন নাম্বারের ইনিশিয়াল ভ্যালু
       photo: null as File | null,
       social_links: null as string | null,
    });
@@ -126,6 +127,19 @@ const MyProfile = () => {
             <Label>{input.name}</Label>
             <Input type="text" name="name" value={data.name} onChange={(e) => onHandleChange(e, setData)} placeholder={input.full_name_placeholder} />
             <InputError message={errors.name} />
+         </div>
+
+         {/* [ADD] ২. ফোন নাম্বারের ইনপুট ফিল্ড */}
+         <div className="space-y-4">
+            <Label>{input.phone ?? 'Phone Number'}</Label>
+            <Input 
+                type="tel" 
+                name="phone" 
+                value={data.phone} 
+                onChange={(e) => onHandleChange(e, setData)} 
+                placeholder={input.phone_placeholder ?? 'Enter your phone number'} 
+            />
+            <InputError message={errors.phone} />
          </div>
 
          <div className="space-y-4">
