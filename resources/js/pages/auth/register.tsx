@@ -7,8 +7,22 @@ import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
 import { SharedData } from '@/types/global';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { FormEventHandler, useRef } from 'react';
+import { FormEventHandler, useRef, useState } from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
+
+// [NEW] জনপ্রিয় ইমেইল ডোমেইনগুলোর লিস্ট
+const COMMON_EMAIL_DOMAINS = [
+   'gmail.com',
+   'yahoo.com',
+   'outlook.com',
+   'hotmail.com',
+   'icloud.com',
+   'live.com',
+   'aol.com',
+   'protonmail.com',
+   'yandex.com',
+   'zoho.com'
+];
 
 interface RegisterProps {
    googleLogIn: boolean;
@@ -24,10 +38,13 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
    const { auth, input, button } = props.translate;
    const recaptchaRef = useRef<ReCAPTCHA | null>(null);
 
+   // [UPDATED] সাজেস্টেড ডোমেইন স্টোর করার জন্য স্টেট
+   const [suggestedDomain, setSuggestedDomain] = useState<string | null>(null);
+
    const { data, setData, post, processing, errors, reset } = useForm({
       name: '',
       email: '',
-      phone: '', // [UPDATED] Phone field added here
+      phone: '',
       password: '',
       password_confirmation: '',
       recaptcha: '',
@@ -39,12 +56,42 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
       post(route('register'), {
          onFinish: () => reset('password', 'password_confirmation'),
          onError: () => {
-            // Reset reCAPTCHA when there's an error
             if (recaptchaRef.current) {
                recaptchaRef.current.reset();
             }
          },
       });
+   };
+
+   // [UPDATED] মাল্টি-ডোমেইন হ্যান্ডলিং লজিক
+   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setData('email', val);
+
+      const parts = val.split('@');
+      if (parts.length === 2) {
+         const domainPart = parts[1].toLowerCase();
+         
+         // যদি @ এর পর কিছু টাইপ করা হয়
+         if (domainPart.length > 0) {
+            // কমন ডোমেইন লিস্ট থেকে ম্যাচ খোঁজা হচ্ছে
+            const match = COMMON_EMAIL_DOMAINS.find(d => d.startsWith(domainPart) && d !== domainPart);
+            setSuggestedDomain(match || null);
+         } else {
+            setSuggestedDomain(null);
+         }
+      } else {
+         setSuggestedDomain(null);
+      }
+   };
+
+   // [UPDATED] সাজেশন অ্যাপ্লাই করার ফাংশন
+   const applySuggestion = () => {
+      if (suggestedDomain) {
+         const parts = data.email.split('@');
+         setData('email', parts[0] + '@' + suggestedDomain);
+         setSuggestedDomain(null);
+      }
    };
 
    return (
@@ -69,7 +116,7 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
                   <InputError message={errors.name} className="mt-2" />
                </div>
 
-               <div className="grid gap-2">
+               <div className="grid gap-2 relative">
                   <Label htmlFor="email">{input.email}</Label>
                   <Input
                      id="email"
@@ -78,14 +125,24 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
                      tabIndex={2}
                      autoComplete="email"
                      value={data.email}
-                     onChange={(e) => setData('email', e.target.value)}
+                     onChange={handleEmailChange} // আপডেটেড হ্যান্ডলার
                      disabled={processing}
                      placeholder={input.email_placeholder}
                   />
+                  
+                  {/* [UPDATED] ডায়নামিক সাজেশন বক্স */}
+                  {suggestedDomain && (
+                     <div 
+                        onClick={applySuggestion}
+                        className="absolute z-10 top-[72px] left-0 bg-white border border-gray-200 shadow-md rounded-md px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-gray-600 w-full transition-all animate-in fade-in slide-in-from-top-1"
+                     >
+                        Did you mean <span className="font-semibold text-primary">{data.email.split('@')[0]}@{suggestedDomain}</span>?
+                     </div>
+                  )}
+                  
                   <InputError message={errors.email} />
                </div>
 
-               {/* [UPDATED] Phone Input Field Added Here */}
                <div className="grid gap-2">
                   <Label htmlFor="phone">{input.phone ?? 'Phone Number'}</Label>
                   <Input
@@ -108,7 +165,7 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
                      id="password"
                      type="password"
                      required
-                     tabIndex={4} // [UPDATED] Index incremented
+                     tabIndex={4}
                      autoComplete="new-password"
                      value={data.password}
                      onChange={(e) => setData('password', e.target.value)}
@@ -124,7 +181,7 @@ export default function Register({ googleLogIn, recaptcha }: RegisterProps) {
                      id="password_confirmation"
                      type="password"
                      required
-                     tabIndex={5} // [UPDATED] Index incremented
+                     tabIndex={5}
                      autoComplete="new-password"
                      value={data.password_confirmation}
                      onChange={(e) => setData('password_confirmation', e.target.value)}
