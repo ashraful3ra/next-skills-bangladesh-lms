@@ -244,6 +244,7 @@ interface CourseLiveClass extends TableCommon {
    class_topic: string;
    class_date_and_time: string;
    class_note?: string;
+   meeting_link?: string; // Added this field
    additional_info?: any;
    course_id: number;
    instructor_id: number;

@@ -27,6 +27,7 @@ const LiveClassForm = ({ title, liveClass, handler, courseId }: Props) => {
       course_id: courseId,
       class_topic: liveClass?.class_topic || '',
       class_note: liveClass?.class_note || '',
+      meeting_link: liveClass?.meeting_link || '', // Added meeting_link field
       class_date_and_time: liveClass?.class_date_and_time ? new Date(liveClass.class_date_and_time) : new Date(),
    });
 
@@ -49,9 +50,9 @@ const LiveClassForm = ({ title, liveClass, handler, courseId }: Props) => {
 
    return (
       <Dialog open={open} onOpenChange={setOpen}>
-         <DialogTrigger>{handler}</DialogTrigger>
+         <DialogTrigger asChild>{handler}</DialogTrigger>
 
-         <DialogContent className="p-0">
+         <DialogContent className="p-0 sm:max-w-[550px]">
             <ScrollArea className="max-h-[90vh] p-6">
                <DialogHeader className="mb-6">
                   <DialogTitle>{title}</DialogTitle>
@@ -68,6 +69,19 @@ const LiveClassForm = ({ title, liveClass, handler, courseId }: Props) => {
                         required
                      />
                      <InputError message={errors.class_topic} />
+                  </div>
+
+                  {/* Meeting Link Input Field */}
+                  <div>
+                     <Label>Meeting Link *</Label>
+                     <Input
+                        type="url"
+                        value={data.meeting_link}
+                        onChange={(e) => setData('meeting_link', e.target.value)}
+                        placeholder="Enter Zoom/Google Meet Link"
+                        required
+                     />
+                     <InputError message={errors.meeting_link} />
                   </div>
 
                   <div>

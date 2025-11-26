@@ -16,6 +16,7 @@ class CourseLiveClass extends Model
         'class_note',
         'additional_info',
         'course_id',
+        'meeting_link',
     ];
 
     protected $casts = [

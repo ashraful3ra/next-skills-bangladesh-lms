@@ -25,7 +25,8 @@ class UpdateLiveClassRequest extends FormRequest
             // 'provider' => 'required|string|in:google',
             'class_topic' => 'required|string|max:255',
             'class_date_and_time' => 'required|date',
-            'class_note' => 'nullable|string|max:1000',
+            'class_note' => 'nullable|string|max:5000',
+            'meeting_link' => 'required|url',
             'course_id' => 'required|exists:courses,id',
         ];
     }
