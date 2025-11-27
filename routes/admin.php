@@ -14,6 +14,7 @@ use App\Http\Controllers\PayoutController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\PaymentHistoryController;
 use App\Http\Controllers\RefundController; // ✅ Added RefundController
+use App\Http\Controllers\AdminController; // Added AdminController
 
 /*
 |--------------------------------------------------------------------------
@@ -24,6 +25,9 @@ use App\Http\Controllers\RefundController; // ✅ Added RefundController
 Route::prefix('dashboard')->group(function () {
     // users
     Route::resource('users', UsersController::class)->only(['index', 'update', 'show']);
+
+    // admin management
+    Route::resource('admins', AdminController::class)->only(['index', 'store', 'destroy']);
     
     // Delete all payments for a specific course of a user
     Route::delete('users/{user}/courses/{course}/payment', [UsersController::class, 'destroyPayment'])->name('users.payment.destroy');

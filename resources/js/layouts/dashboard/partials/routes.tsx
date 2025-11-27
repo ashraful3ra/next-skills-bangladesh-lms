@@ -1,5 +1,5 @@
 import { routeLastSegment } from '@/lib/route';
-import { Award, Book, Briefcase, CassetteTape, CreditCard, LayoutDashboard, ListChecks, Newspaper, Receipt, RefreshCcw, School, Settings, Users } from 'lucide-react';
+import { Award, Book, Briefcase, CassetteTape, CreditCard, LayoutDashboard, ListChecks, Newspaper, Receipt, RefreshCcw, School, Settings, Users, UserCog } from 'lucide-react';
 
 const dashboardRoutes: DashboardRoute[] = [
    {
@@ -254,6 +254,15 @@ const dashboardRoutes: DashboardRoute[] = [
             name: 'All Users',
             path: route('users.index'),
             slug: routeLastSegment(route('users.index')),
+            active: true,
+            access: ['admin', 'collaborative', 'administrative'],
+            children: [],
+         },
+         {
+            Icon: UserCog,
+            name: 'Admins',
+            path: route('admins.index'),
+            slug: routeLastSegment(route('admins.index')),
             active: true,
             access: ['admin', 'collaborative', 'administrative'],
             children: [],
