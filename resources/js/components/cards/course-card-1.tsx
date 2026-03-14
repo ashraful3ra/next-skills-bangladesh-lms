@@ -41,11 +41,18 @@ const CourseCard1 = ({ course, viewType = 'grid', className, wishlists }: Props)
                         id: course.id,
                      })}
                   >
-                     <div className={cn('relative h-[190px] overflow-hidden rounded-lg', viewType === 'list' && 'sm:w-[260px]')}>
+                     {/* 16:9 aspect ratio container — matches 1920×1080 thumbnail */}
+                     <div
+                        className={cn(
+                           'relative overflow-hidden rounded-lg',
+                           viewType === 'list' ? 'sm:w-[260px] sm:aspect-video' : 'aspect-video w-full',
+                        )}
+                        style={{ aspectRatio: '16 / 9' }}
+                     >
                         <img
                            src={course.thumbnail || '/assets/images/blank-image.jpg'}
                            alt={course.title}
-                           className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                           className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                            onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/assets/images/blank-image.jpg';
@@ -64,7 +71,7 @@ const CourseCard1 = ({ course, viewType = 'grid', className, wishlists }: Props)
                            </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                           <p> {isWishlisted ? frontend.remove_from_wishlist : frontend.add_to_wishlist}</p>
+                           <p>{isWishlisted ? frontend.remove_from_wishlist : frontend.add_to_wishlist}</p>
                         </TooltipContent>
                      </Tooltip>
                   </TooltipProvider>
@@ -77,7 +84,8 @@ const CourseCard1 = ({ course, viewType = 'grid', className, wishlists }: Props)
                <div className="text-secondary-foreground mb-1 flex items-center gap-1.5 text-xs">
                   <Users className="h-3 w-3" />
                   <span>
-                     {course.enrollments_count || 0} {course.enrollments_count || 0 > 0 ? ` ${common.students}` : ` ${frontend.student}`}
+                     {course.enrollments_count || 0}{' '}
+                     {(course.enrollments_count || 0) > 0 ? `${common.students}` : `${frontend.student}`}
                   </span>
 
                   <Clock className="ml-2 h-3 w-3" />
@@ -119,12 +127,10 @@ const CourseCard1 = ({ course, viewType = 'grid', className, wishlists }: Props)
                         </span>
                      </>
                   ) : (
-                     <>
-                        <span className="font-semibold">
-                           {currency?.symbol}
-                           {course.price}
-                        </span>
-                     </>
+                     <span className="font-semibold">
+                        {currency?.symbol}
+                        {course.price}
+                     </span>
                   )}
                </p>
 
