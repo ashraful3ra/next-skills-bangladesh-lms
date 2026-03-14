@@ -14,7 +14,7 @@ const CoursePreview = () => {
    const courseLanguage = courseLanguages.find((language) => language.value === course.language);
 
    return (
-      <div className="bg-card sticky top-24 space-y-5 rounded-lg border p-5 shadow">
+      <div className="bg-card lg:sticky lg:top-24 space-y-5 rounded-lg border p-5 shadow w-full">
          <div className="space-y-4">
             <div className="relative">
                <img className="w-full rounded-lg" src={course.thumbnail ?? '/assets/images/blank-image.jpg'} alt="" />

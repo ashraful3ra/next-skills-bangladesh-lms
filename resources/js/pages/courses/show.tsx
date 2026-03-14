@@ -146,7 +146,13 @@ const Show = ({ course, system, translate }: CourseDetailsProps & { translate: a
          </Head>
 
          <div className="container grid grid-cols-1 gap-7 py-10 md:grid-cols-3">
-            <div className="space-y-8 md:col-span-2">
+            {/* Sidebar — mobile: order-first (top), desktop: order-last (right) */}
+            <div className="order-first md:order-last md:col-span-1">
+               <CoursePreview />
+            </div>
+
+            {/* Main content — mobile: order-last (bottom), desktop: order-first (left) */}
+            <div className="order-last space-y-8 md:order-first md:col-span-2">
                <CourseHeader course={course} />
 
                <Tabs defaultValue="overview" className="bg-card overflow-hidden rounded-md border shadow">
@@ -168,10 +174,6 @@ const Show = ({ course, system, translate }: CourseDetailsProps & { translate: a
                      </TabsContent>
                   ))}
                </Tabs>
-            </div>
-
-            <div>
-               <CoursePreview />
             </div>
          </div>
       </>
