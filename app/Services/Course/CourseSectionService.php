@@ -18,7 +18,9 @@ class CourseSectionService extends MediaService
 
    public function __construct()
    {
-      $this->uploaderService = config('filesystems.default') === 's3' ? new S3MultipartUploadService() : new LocalFileUploadService();
+      $this->uploaderService = config('filesystems.default') === 's3'
+         ? new S3MultipartUploadService()
+         : new LocalFileUploadService();
    }
 
    function createSection(array $data, string $user_id): CourseSection
@@ -28,12 +30,12 @@ class CourseSectionService extends MediaService
 
    function updateSection(string $id, array $data): bool
    {
-      return CourseSection::find($id)->update($data);
+      return CourseSection::findOrFail($id)->update($data);
    }
 
    function deleteSection(string $id): bool
    {
-      return CourseSection::find($id)->delete();
+      return CourseSection::findOrFail($id)->delete();
    }
 
    function sortSections(array $sortedData): bool
@@ -59,7 +61,7 @@ class CourseSectionService extends MediaService
 
    function updateSectionLesson(string $id, array $data): SectionLesson
    {
-      $lesson = SectionLesson::find($id);
+      $lesson = SectionLesson::findOrFail($id);
 
       $this->lessonHandler($lesson, $data);
 
@@ -75,7 +77,6 @@ class CourseSectionService extends MediaService
       $lesson_sort = $lesson->sort;
       $course_section_id = $lesson->course_section_id;
 
-      // Get the current section to get its sort order
       $currentSection = CourseSection::find($course_section_id);
 
       if ($lesson->lesson_src) {
@@ -91,14 +92,12 @@ class CourseSectionService extends MediaService
          return true;
       }
 
-      // Get all watch histories for this course
       $histories = WatchHistory::where('course_id', $course_id)->get();
 
       foreach ($histories as $history) {
          if ($history) {
             $updateNeeded = false;
 
-            // 1. Remove from completed_watching if exists
             $completedWatching = json_decode($history->completed_watching, true) ?? [];
             $originalCount = count($completedWatching);
             $completedWatching = array_filter($completedWatching, function ($item) use ($lesson_id) {
@@ -106,19 +105,18 @@ class CourseSectionService extends MediaService
             });
 
             if (count($completedWatching) !== $originalCount) {
-               $history->completed_watching = !empty($completedWatching) ? json_encode(array_values($completedWatching)) : null;
+               $history->completed_watching = !empty($completedWatching)
+                  ? json_encode(array_values($completedWatching))
+                  : null;
                $updateNeeded = true;
             }
 
-            // 2. Handle current_watching_id and next_watching_id updates
             if ($history->current_watching_id == $lesson_id) {
-               // First try to find the next lesson in the same section
                $nextLesson = SectionLesson::where('course_section_id', $course_section_id)
                   ->where('sort', '>', $lesson_sort)
                   ->orderBy('sort', 'asc')
                   ->first();
 
-               // If no next lesson in same section, try first lesson in next section
                if (!$nextLesson && $currentSection) {
                   $nextSection = CourseSection::where('course_id', $course_id)
                      ->where('sort', '>', $currentSection->sort)
@@ -132,7 +130,6 @@ class CourseSectionService extends MediaService
                   }
                }
 
-               // If still no next lesson, try previous lesson in same section
                if (!$nextLesson) {
                   $nextLesson = SectionLesson::where('course_section_id', $course_section_id)
                      ->where('sort', '<', $lesson_sort)
@@ -140,7 +137,6 @@ class CourseSectionService extends MediaService
                      ->first();
                }
 
-               // If still no lesson found, try any lesson in the course
                if (!$nextLesson) {
                   $nextLesson = SectionLesson::where('course_id', $course_id)
                      ->where('id', '!=', $lesson_id)
@@ -157,18 +153,16 @@ class CourseSectionService extends MediaService
                   $history->current_watching_type = null;
                   $history->current_section_id = null;
                }
+
                $updateNeeded = true;
             }
 
-            // 3. Update next_watching_id if it matches the deleted lesson
             if ($history->next_watching_id == $lesson_id) {
-               // First try to find next lesson in sort order
                $nextLesson = SectionLesson::where('course_id', $course_id)
                   ->where('sort', '>', $lesson_sort)
                   ->orderBy('sort', 'asc')
                   ->first();
 
-               // If no next lesson, try previous lesson
                if (!$nextLesson) {
                   $nextLesson = SectionLesson::where('course_id', $course_id)
                      ->where('sort', '<', $lesson_sort)
@@ -176,15 +170,12 @@ class CourseSectionService extends MediaService
                      ->first();
                }
 
-
-               // If still no lesson found, try any lesson in the course
                if (!$nextLesson) {
                   $nextLesson = SectionLesson::where('course_id', $course_id)
                      ->where('id', '!=', $lesson_id)
                      ->orderBy('sort', 'asc')
                      ->first();
                }
-
 
                if ($nextLesson) {
                   $history->next_watching_id = $nextLesson->id;
@@ -193,26 +184,24 @@ class CourseSectionService extends MediaService
                   $history->next_watching_id = null;
                   $history->next_watching_type = null;
                }
+
                $updateNeeded = true;
             }
 
-            // 4. Update prev_watching_id if it matches the deleted lesson
             if ($history->prev_watching_id == $lesson_id && $history->prev_watching_type === 'lesson') {
-               // Find the lesson before the deleted one
                $prevLesson = SectionLesson::where('course_id', $course_id)
                   ->where('sort', '<', $lesson_sort)
                   ->orderBy('sort', 'desc')
                   ->first();
 
-
                if ($prevLesson) {
                   $history->prev_watching_id = $prevLesson->id;
                   $history->prev_watching_type = 'lesson';
                } else {
-                  // If no previous lesson, set to null
                   $history->prev_watching_id = null;
                   $history->prev_watching_type = null;
                }
+
                $updateNeeded = true;
             }
 
@@ -254,19 +243,36 @@ class CourseSectionService extends MediaService
                   ...$updatedLesson,
                   'lesson_src' => $data['lesson_src_new'],
                   'embed_source' => $embedCode,
+                  'lesson_provider' => 'html5',
+               ];
+            } else {
+               $updatedLesson = [
+                  ...$updatedLesson,
+                  'lesson_provider' => $data['lesson_provider'] ?? 'html5',
                ];
             }
 
             break;
 
-         // case 'video_url':
-         //    $safeUrl = htmlspecialchars($data['lesson_src'], ENT_QUOTES, 'UTF-8');
+         case 'video_url':
+            $src = trim($data['lesson_src'] ?? '');
+            $provider = $data['lesson_provider'] ?? null;
 
-         //    $updatedLesson = [
-         //       ...$updatedLesson,
-         //       'lesson_src' => $safeUrl,
-         //    ];
-         //    break;
+            if (!$provider) {
+               if ($this->isYouTubeUrl($src)) {
+                  $provider = 'youtube';
+               } elseif ($this->isVimeoUrl($src)) {
+                  $provider = 'vimeo';
+               }
+            }
+
+            $updatedLesson = [
+               ...$updatedLesson,
+               'lesson_src' => $src,
+               'lesson_provider' => $provider,
+            ];
+
+            break;
 
          case 'embed':
             $updatedLesson = [
@@ -278,7 +284,6 @@ class CourseSectionService extends MediaService
 
          default:
             $updatedLesson = $data;
-
             break;
       }
 
@@ -297,8 +302,16 @@ class CourseSectionService extends MediaService
       if ($lesson->count() >= 0 && !$history) {
          $lesson = $lesson->orderBy('sort', 'asc')->first();
 
+         if (!$lesson) {
+            return null;
+         }
+
          $coursePlay = new CoursePlayerService();
          $course = Course::where('id', $course_id)->with('sections')->first();
+
+         if (!$course) {
+            return null;
+         }
 
          return $coursePlay->watchHistory($course, $lesson->id, $watching_type, $user_id);
       }
@@ -306,9 +319,19 @@ class CourseSectionService extends MediaService
       return $history;
    }
 
+   protected function isYouTubeUrl(string $url): bool
+   {
+      return str_contains($url, 'youtube.com') || str_contains($url, 'youtu.be');
+   }
+
+   protected function isVimeoUrl(string $url): bool
+   {
+      return str_contains($url, 'vimeo.com') || str_contains($url, 'player.vimeo.com');
+   }
+
    /**
     * Extract YouTube video ID from URL
-    * 
+    *
     * @param string $url
     * @return string|null
     */
@@ -318,6 +341,23 @@ class CourseSectionService extends MediaService
 
       if (preg_match($pattern, $url, $matches)) {
          return $matches[2];
+      }
+
+      return null;
+   }
+
+   /**
+    * Extract Vimeo video ID from URL
+    *
+    * @param string $url
+    * @return string|null
+    */
+   protected function extractVimeoVideoId(string $url): ?string
+   {
+      $pattern = '/(?:vimeo\.com\/(?:video\/)?|player\.vimeo\.com\/video\/)(\d+)/i';
+
+      if (preg_match($pattern, $url, $matches)) {
+         return $matches[1];
       }
 
       return null;

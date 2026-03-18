@@ -20,8 +20,6 @@ import { useEffect, useState } from 'react';
 import { CourseUpdateProps } from '../../update';
 
 const getLessonTypes = (translate: any) => [
-   // { value: 'vimeo', label: 'Vimeo Video', flag: true },
-   // { value: 'drive', label: 'Google drive video', flag: true },
    { value: 'video', label: translate.dashboard.video_file, flag: false },
    { value: 'video_url', label: translate.dashboard.video_url, flag: false },
    { value: 'document', label: translate.dashboard.document_file, flag: false },
@@ -57,9 +55,9 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
       description: lesson ? lesson.description : '',
       sort: lesson ? lesson.sort : props.lastLessonSort + 1,
       lesson_type: lesson ? lesson.lesson_type : 'video',
-      lesson_provider: lesson ? lesson.lesson_provider : '',
+      lesson_provider: lesson ? (lesson.lesson_provider || (lesson.lesson_type === 'video_url' ? 'youtube' : '')) : '',
       lesson_src: lesson ? lesson.lesson_src : '',
-      lesson_src_new: null,
+      lesson_src_new: null as string | null,
       embed_source: lesson ? lesson.embed_source : '',
       duration: lesson ? lesson.duration : '00:00:00',
       summary: lesson ? lesson.summary : '',
@@ -90,6 +88,9 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                reset();
                setOpen(false);
                setIsSubmit(false);
+               setIsFileSelected(false);
+               setIsFileUploaded(false);
+               setLessonType('type');
             },
          });
       } else {
@@ -99,6 +100,9 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                reset();
                setOpen(false);
                setIsSubmit(false);
+               setIsFileSelected(false);
+               setIsFileUploaded(false);
+               setLessonType('type');
             },
          });
       }
@@ -116,17 +120,34 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
       if (!open) {
          reset();
          setLessonType('type');
+         setIsSubmit(false);
+         setIsFileSelected(false);
+         setIsFileUploaded(false);
       }
    }, [open]);
 
+   useEffect(() => {
+      if (data.lesson_type === 'video_url' && !data.lesson_provider) {
+         setData('lesson_provider', 'youtube');
+      }
+
+      if (['video', 'document', 'image', 'text', 'embed'].includes(data.lesson_type) && data.lesson_provider) {
+         if (data.lesson_type === 'video') {
+            setData('lesson_provider', 'html5');
+         } else {
+            setData('lesson_provider', '');
+         }
+      }
+   }, [data.lesson_type]);
+
    const onDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
-
-      // Ensure the value is in the HH:mm:ss format
       const formattedTime = value.match(/^([0-2]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9])$/);
 
       if (formattedTime) {
          setData('duration', value);
+      } else if (value === '') {
+         setData('duration', '');
       }
    };
 
@@ -147,7 +168,7 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                            <Label className="font-semibold">{input.lesson_type}</Label>
                            <RadioGroup
                               value={data.lesson_type}
-                              onValueChange={(lesson) => setData('lesson_type', lesson)}
+                              onValueChange={(lessonType) => setData('lesson_type', lessonType)}
                               className="grid grid-cols-2 gap-3"
                            >
                               {lessonTypes.map((type) => (
@@ -173,36 +194,41 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                            <InputError message={errors.title} />
                         </div>
 
-                        {/* Conditional Fields */}
-                        {['video_url'].includes(data.lesson_type) && (
+                        {data.lesson_type === 'video_url' && (
                            <>
                               <div>
                                  <Label htmlFor="lesson_provider">{input.video_url_provider}</Label>
                                  <Select
                                     required
                                     name="lesson_provider"
-                                    value={data.lesson_provider}
+                                    value={data.lesson_provider || 'youtube'}
                                     onValueChange={(provider) => setData('lesson_provider', provider)}
                                  >
                                     <SelectTrigger className="w-full">
-                                       <SelectValue placeholder={input.provider_placeholder} />
+                                       <SelectValue placeholder={input.provider_placeholder || 'Select provider'} />
                                     </SelectTrigger>
                                     <SelectContent>
                                        <SelectItem value="youtube">YouTube</SelectItem>
+                                       <SelectItem value="vimeo">Vimeo</SelectItem>
                                     </SelectContent>
                                  </Select>
+                                 <InputError message={errors.lesson_provider} />
                               </div>
 
                               <div>
                                  <Label>
-                                    Video URL
-                                    <span className="text-xs text-gray-500">(Provide the shareable url only)</span>
+                                    Video URL <span className="text-xs text-gray-500">(Provide the shareable url only)</span>
                                  </Label>
                                  <Input
                                     required
+                                    type="url"
                                     name="lesson_src"
                                     value={data.lesson_src || ''}
-                                    placeholder={`Type your ${data.lesson_provider} video url`}
+                                    placeholder={
+                                       data.lesson_provider === 'vimeo'
+                                          ? 'https://vimeo.com/123456789'
+                                          : 'https://www.youtube.com/watch?v=...'
+                                    }
                                     onChange={(e) => onHandleChange(e, setData)}
                                  />
                                  <InputError message={errors.lesson_src} />
@@ -233,7 +259,7 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                                     setIsFileUploaded(true);
                                     setData('lesson_src_new', fileData.file_url);
                                  }}
-                                 onError={(errors) => {
+                                 onError={() => {
                                     setIsSubmit(false);
                                  }}
                                  onCancelUpload={() => {
@@ -246,8 +272,7 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                         {data.lesson_type === 'embed' && (
                            <div>
                               <Label>
-                                 Embed source
-                                 <span className="text-xs text-gray-500">(Provide the source url only)</span>
+                                 Embed source <span className="text-xs text-gray-500">(Provide the iframe html)</span>
                               </Label>
                               <Textarea
                                  required
@@ -323,7 +348,7 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                            <Label>Lesson type</Label>
                            <RadioGroup
                               required
-                              defaultValue={data.is_free ? 'free' : 'paid'}
+                              value={data.is_free ? 'free' : 'paid'}
                               className="flex items-center space-x-4 pt-2 pb-1"
                               onValueChange={(value) => setData('is_free', value === 'free' ? 1 : 0)}
                            >
@@ -339,6 +364,7 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                            <InputError message={errors.is_free} />
                         </div>
                      </TabsContent>
+
                      <DialogFooter className="w-full justify-between space-x-2 pt-8">
                         <div className="flex w-full items-center gap-4">
                            <DialogClose asChild>

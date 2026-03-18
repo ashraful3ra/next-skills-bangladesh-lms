@@ -39,7 +39,7 @@ class UpdateLessonRequest extends FormRequest
             'course_id' => 'required|exists:courses,id',
             'course_section_id' => 'required|exists:course_sections,id',
             'lesson_type' => 'required|string|in:video_url,video,document,image,text,embed',
-            'lesson_provider' => 'nullable|string|max:255',
+            'lesson_provider' => 'nullable|string|in:youtube,vimeo,html5',
             'lesson_src' => 'nullable|string',
             'lesson_src_new' => 'nullable|string',
             'duration' => 'nullable|regex:/^\d{2}:\d{2}:\d{2}$/',
@@ -69,6 +69,7 @@ class UpdateLessonRequest extends FormRequest
         switch (request('lesson_type')) {
             case 'video_url':
                 $rules['lesson_src'] = 'required|url';
+                $rules['lesson_provider'] = 'required|string|in:youtube,vimeo';
                 break;
         }
 
