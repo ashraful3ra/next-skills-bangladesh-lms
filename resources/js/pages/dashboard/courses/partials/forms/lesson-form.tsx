@@ -10,12 +10,14 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { getFileMetadata } from '@/lib/file-metadata';
 import { onHandleChange } from '@/lib/inertia';
 import { cn } from '@/lib/utils';
 import { useForm, usePage } from '@inertiajs/react';
+import { PlayCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CourseUpdateProps } from '../../update';
 
@@ -52,6 +54,7 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
       title: lesson ? lesson.title : '',
       status: lesson ? lesson.status : '',
       is_free: lesson ? lesson.is_free : 0,
+      is_free_preview: lesson ? (lesson.is_free_preview ? 1 : 0) : 0,  // ← NEW
       description: lesson ? lesson.description : '',
       sort: lesson ? lesson.sort : props.lastLessonSort + 1,
       lesson_type: lesson ? lesson.lesson_type : 'video',
@@ -64,6 +67,9 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
       course_id: lesson ? lesson.course_id : props.course.id,
       course_section_id: sectionId,
    });
+
+   // is_free_preview শুধু video_url type এর জন্য — lesson type change হলে reset করো
+   const isVideoUrl = data.lesson_type === 'video_url';
 
    const isFileUpload = ['video', 'document', 'image'].includes(data.lesson_type);
 
@@ -137,6 +143,11 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
          } else {
             setData('lesson_provider', '');
          }
+      }
+
+      // video_url না হলে free preview বন্ধ করে দাও
+      if (data.lesson_type !== 'video_url') {
+         setData('is_free_preview', 0);
       }
    }, [data.lesson_type]);
 
@@ -282,7 +293,7 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                                  rows={4}
                                  onChange={(e) => onHandleChange(e, setData)}
                               />
-                              <InputError message={errors.embed_source} />
+                              <InputError message={errors.embed_source} />`
                            </div>
                         )}
 
@@ -344,6 +355,7 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                            <InputError message={errors.summary} />
                         </div>
 
+                        {/* Lesson Type (paid/free) — existing field */}
                         <div>
                            <Label>Lesson type</Label>
                            <RadioGroup
@@ -363,6 +375,29 @@ const LessonForm = ({ title, handler, lesson, sectionId }: Props) => {
                            </RadioGroup>
                            <InputError message={errors.is_free} />
                         </div>
+
+                        {/* ── FREE PREVIEW TOGGLE (NEW) ── */}
+                        {/* শুধু video_url type এর lesson এ দেখাবে */}
+                        {isVideoUrl && (
+                           <div className="flex items-center justify-between rounded-lg border border-dashed border-green-300 bg-green-50 px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                 <PlayCircle className="h-4 w-4 text-green-600" />
+                                 <div>
+                                    <p className="text-sm font-medium text-green-800">Free Preview</p>
+                                    <p className="text-xs text-green-600">
+                                       Public visitors can watch this lesson without enrolling
+                                    </p>
+                                 </div>
+                              </div>
+                              <Switch
+                                 checked={data.is_free_preview === 1}
+                                 onCheckedChange={(checked) => setData('is_free_preview', checked ? 1 : 0)}
+                                 className="data-[state=checked]:bg-green-500"
+                              />
+                           </div>
+                        )}
+                        {/* ── END FREE PREVIEW TOGGLE ── */}
+
                      </TabsContent>
 
                      <DialogFooter className="w-full justify-between space-x-2 pt-8">

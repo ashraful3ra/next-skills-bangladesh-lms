@@ -13,6 +13,7 @@ class UpdateLessonRequest extends FormRequest
             'course_id' => (int) request('course_id'),
             'course_section_id' => (int) request('course_section_id'),
             'is_free' => (int) request('is_free'),
+            'is_free_preview' => (int) request('is_free_preview'), // ← NEW
             // 'status' => (int) request('status'),
             // 'is_free' => filter_var(request('is_free'), FILTER_VALIDATE_BOOLEAN),
         ]);
@@ -44,6 +45,7 @@ class UpdateLessonRequest extends FormRequest
             'lesson_src_new' => 'nullable|string',
             'duration' => 'nullable|regex:/^\d{2}:\d{2}:\d{2}$/',
             'is_free' => 'nullable|boolean',
+            'is_free_preview' => 'nullable|boolean', // ← NEW
             'description' => 'nullable|string',
             'thumbnail' => 'nullable|string',
             'summary' => 'nullable|string',

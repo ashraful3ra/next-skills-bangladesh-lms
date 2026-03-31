@@ -23,6 +23,7 @@ class SectionLesson extends Model implements HasMedia
         'thumbnail',
         'duration',
         'is_free',
+        'is_free_preview',
         'description',
         'summary',
         'course_id',

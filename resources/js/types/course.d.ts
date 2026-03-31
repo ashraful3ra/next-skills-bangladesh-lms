@@ -96,6 +96,7 @@ interface SectionLesson extends TableCommon {
    thumbnail?: string;
    duration?: string;
    is_free: number;
+   is_free_preview: boolean;
    description?: string;
    summary?: string;
    course: Course;

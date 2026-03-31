@@ -13,6 +13,7 @@ class StoreLessonRequest extends FormRequest
             'course_id' => (int) request('course_id'),
             'course_section_id' => (int) request('course_section_id'),
             'is_free' => (int) request('is_free'),
+            'is_free_preview' => (int) request('is_free_preview'), // ← NEW
             // 'status' => (int) request('status'),
             // 'free_lesson' => filter_var(request('free_lesson'), FILTER_VALIDATE_BOOLEAN),
         ]);
@@ -36,6 +37,7 @@ class StoreLessonRequest extends FormRequest
             'lesson_src_new' => 'nullable|string',
             'duration' => 'nullable|regex:/^\d{2}:\d{2}:\d{2}$/',
             'is_free' => 'nullable|boolean',
+            'is_free_preview' => 'nullable|boolean', // ← NEW
             'description' => 'nullable|string',
             'thumbnail' => 'nullable|string',
             'summary' => 'nullable|string',
